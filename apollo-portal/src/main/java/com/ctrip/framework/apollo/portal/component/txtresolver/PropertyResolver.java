@@ -37,8 +37,8 @@ public class PropertyResolver implements ConfigTextResolver {
 
     String[] newItems = configText.split(ITEM_SEPARATOR);
     Set<String> repeatKeys = new HashSet<>();
-    if (isHasRepeatKey(newItems,repeatKeys)) {
-      throw new BadRequestException(String.format("config text has repeat key please check.repeat keys:%s", repeatKeys.toString()));
+    if (isHasRepeatKey(newItems, repeatKeys)) {
+      throw new BadRequestException(String.format("Config text has repeated keys: %s, please check your input.", repeatKeys.toString()));
     }
 
     ItemChangeSets changeSets = new ItemChangeSets();
@@ -73,7 +73,7 @@ public class PropertyResolver implements ConfigTextResolver {
     return changeSets;
   }
 
-  private boolean isHasRepeatKey(String[] newItems,@NotNull Set<String> repeatKeys) {
+  private boolean isHasRepeatKey(String[] newItems, @NotNull Set<String> repeatKeys) {
     Set<String> keys = new HashSet<>();
     int lineCounter = 1;
     for (String item : newItems) {
