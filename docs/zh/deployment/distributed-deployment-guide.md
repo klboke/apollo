@@ -522,6 +522,22 @@ pro.meta=http://apollo.xxx.com
 
 >注2: meta service地址也可以填入IP，0.11.0版本之前只支持填入一个IP。从0.11.0版本开始支持填入以逗号分隔的多个地址（[PR #1214](https://github.com/ctripcorp/apollo/pull/1214)），如`http://1.1.1.1:8080,http://2.2.2.2:8080`，不过生产环境还是建议使用域名（走slb），因为机器扩容、缩容等都可能导致IP列表的变化。
 
+###### 2.2.1.1.2.5 启用外部nacos服务注册中心替换内置eureka
+启用外部的nacos服务注册中心分两步走，configService和adminService的操作一样，如下：
+- 1、修改VM options，激活nacosDiscovery的profile，如：
+```shell
+-Dapollo_profile=github,auth,nacosDiscovery
+```
+- 2、前往application-github.properties配置nacos连接地址，如：
+```properties
+#nacos discovery
+nacos.discovery.server-addr=127.0.0.1:8848
+```
+也可采用VM options的方式配置，如：
+```
+-Dnacos.discovery.server-addr=127.0.0.1:8848
+```
+
 #### 2.2.1.2 通过源码构建
 
 ##### 2.2.1.2.1 配置数据库连接信息
