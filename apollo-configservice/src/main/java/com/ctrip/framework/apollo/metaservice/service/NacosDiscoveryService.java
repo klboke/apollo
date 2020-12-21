@@ -6,6 +6,8 @@ import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.google.common.collect.Lists;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ import java.util.List;
 @Profile({"nacosDiscovery"})
 public class NacosDiscoveryService implements DiscoveryService {
 
+    private final static Logger logger = LoggerFactory.getLogger(NacosDiscoveryService.class);
 
     private NamingService namingService;
 
@@ -38,8 +41,8 @@ public class NacosDiscoveryService implements DiscoveryService {
                 serviceDTOList.add(serviceDTO);
             });
             return serviceDTOList;
-        } catch (NacosException e) {
-            e.printStackTrace();
+        } catch (NacosException ex) {
+            logger.error(ex.getMessage(),ex);
         }
         return Collections.emptyList();
     }
