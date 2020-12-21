@@ -42,7 +42,7 @@ public class ServiceControllerTest {
     when(discoveryService.getServiceInstances(ServiceNameConsts.APOLLO_CONFIGSERVICE))
         .thenReturn(someServices);
 
-    assertEquals(someServices, serviceController.getConfigService());
+    assertEquals(someServices, serviceController.getConfigService(someAppId, someClientIp));
   }
 
   @Test

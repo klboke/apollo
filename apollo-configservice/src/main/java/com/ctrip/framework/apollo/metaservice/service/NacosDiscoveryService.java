@@ -20,18 +20,21 @@ import java.util.List;
 @Profile({"nacosDiscovery"})
 public class NacosDiscoveryService implements DiscoveryService {
 
-    private static final String SERVICE_NAME_METADATA_KEY = "apollo.serviceName";
+
+    private NamingService namingService;
 
     @NacosInjected
-    private NamingService namingService;
+    public void setNamingService(NamingService namingService) {
+        this.namingService = namingService;
+    }
 
     @Override
     public List<ServiceDTO> getServiceInstances(String serviceId) {
         try {
-            List<Instance> instances = namingService.getAllInstances(serviceId);
+            List<Instance> instances = namingService.selectInstances(serviceId,true);
             List<ServiceDTO> serviceDTOList = Lists.newLinkedList();
             instances.forEach(instance -> {
-                ServiceDTO serviceDTO = this.toServiceDTO(instance);
+                ServiceDTO serviceDTO = this.toServiceDTO(instance, serviceId);
                 serviceDTOList.add(serviceDTO);
             });
             return serviceDTOList;
@@ -41,9 +44,8 @@ public class NacosDiscoveryService implements DiscoveryService {
         return Collections.emptyList();
     }
 
-    private ServiceDTO toServiceDTO(Instance instance) {
+    private ServiceDTO toServiceDTO(Instance instance, String appName) {
         ServiceDTO service = new ServiceDTO();
-        String appName = instance.getMetadata().get(SERVICE_NAME_METADATA_KEY);
         service.setAppName(appName);
         service.setInstanceId(instance.getInstanceId());
         String homePageUrl = "http://" + instance.getIp() + ":" + instance.getPort() + "/";

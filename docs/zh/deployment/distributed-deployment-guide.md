@@ -526,9 +526,13 @@ pro.meta=http://apollo.xxx.com
 启用外部的nacos服务注册中心分两步走，configService和adminService的操作一样，如下：
 - 1、修改VM options，激活nacosDiscovery的profile，如：
 ```shell
--Dapollo_profile=github,auth,nacosDiscovery
+-Dapollo_profile=github,nacosDiscovery
 ```
-- 2、前往application-github.properties配置nacos连接地址，如：
+也可采用环境变量配置方式激活配置，如：
+```shell
+export SPRING_PROFILES_ACTIVE=github,nacosDiscovery
+```
+- 2、前往`config`目录下的`application-github.properties`文件配置nacos连接地址，如：
 ```properties
 #nacos discovery
 nacos.discovery.server-addr=127.0.0.1:8848
