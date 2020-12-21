@@ -532,14 +532,15 @@ pro.meta=http://apollo.xxx.com
 ```shell
 export SPRING_PROFILES_ACTIVE=github,nacosDiscovery
 ```
-- 2、前往`config`目录下的`application-github.properties`文件配置nacos连接地址，如：
+- 2、前往`config`目录下的`application-github.properties`文件配置nacos，如：
 ```properties
 #nacos discovery
+nacos.discovery.enabled=true
 nacos.discovery.server-addr=127.0.0.1:8848
 ```
 也可采用VM options的方式配置，如：
 ```
--Dnacos.discovery.server-addr=127.0.0.1:8848
+-Dnacos.discovery.enabled=true -Dnacos.discovery.server-addr=127.0.0.1:8848
 ```
 
 #### 2.2.1.2 通过源码构建
