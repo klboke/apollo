@@ -15,12 +15,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * After startup, set FetchRegistry to true, refresh eureka client
  **/
 @Configuration
-@ConditionalOnProperty(value = "eureka.client.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(value = {"eureka.client.enabled", "apollo.eureka.server.enabled"}, havingValue = "true", matchIfMissing = true)
 public class ConfigServerEurekaClientConfigure {
 
-    private static final String EUREKACLIENT_BEANNAME = "eurekaClient";
+    private static final String EUREKA_CLIENT_BEAN_NAME = "eurekaClient";
     private final ApolloEurekaClientConfig eurekaClientConfig;
-    private final AtomicBoolean isRefresh = new AtomicBoolean(false);
+    private final AtomicBoolean isRefreshed = new AtomicBoolean(false);
     private final RefreshScope refreshScope;
 
     public ConfigServerEurekaClientConfigure(ApolloEurekaClientConfig eurekaClientConfig, RefreshScope refreshScope) {
@@ -37,9 +37,9 @@ public class ConfigServerEurekaClientConfigure {
     }
 
     private void refreshEurekaClient() {
-        if (isRefresh.compareAndSet(false, true)) {
+        if (isRefreshed.compareAndSet(false, true)) {
             eurekaClientConfig.setFetchRegistry(true);
-            refreshScope.refresh(EUREKACLIENT_BEANNAME);
+            refreshScope.refresh(EUREKA_CLIENT_BEAN_NAME);
         }
     }
 }
