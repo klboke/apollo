@@ -1,7 +1,7 @@
 package com.ctrip.framework.apollo.metaservice.service;
 
+import com.alibaba.nacos.api.naming.NamingService;
 import com.alibaba.nacos.api.naming.pojo.Instance;
-import com.alibaba.nacos.client.naming.NacosNamingService;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
 import com.google.common.collect.Lists;
 import org.junit.Before;
@@ -27,7 +27,7 @@ public class NacosDiscoveryServiceTest {
     private NacosDiscoveryService nacosDiscoveryService;
 
     @Mock
-    private NacosNamingService nacosNamingService;
+    private NamingService nacosNamingService;
 
     private String someServiceId;
 
