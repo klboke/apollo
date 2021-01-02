@@ -19,7 +19,7 @@ import java.util.List;
  * Service discovery nacos implementation
  **/
 @Service
-@Profile({"nacosDiscovery"})
+@Profile({"nacos-discovery"})
 public class NacosDiscoveryService implements DiscoveryService {
 
     private final static Logger logger = LoggerFactory.getLogger(NacosDiscoveryService.class);

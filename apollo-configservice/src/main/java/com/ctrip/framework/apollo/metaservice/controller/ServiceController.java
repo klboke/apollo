@@ -30,8 +30,8 @@ public class ServiceController {
 
   @RequestMapping("/config")
   public List<ServiceDTO> getConfigService(
-          @RequestParam(value = "appId", defaultValue = "") String appId,
-          @RequestParam(value = "ip", required = false) String clientIp) {
+      @RequestParam(value = "appId", defaultValue = "") String appId,
+      @RequestParam(value = "ip", required = false) String clientIp) {
     return discoveryService.getServiceInstances(ServiceNameConsts.APOLLO_CONFIGSERVICE);
   }
 
