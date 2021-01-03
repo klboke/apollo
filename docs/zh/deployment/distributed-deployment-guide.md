@@ -605,11 +605,11 @@ META_SERVERS_OPTS="-Ddev_meta=$dev_meta -Dfat_meta=$fat_meta -Duat_meta=$uat_met
 
 ##### 2.2.1.2.7 启用外部nacos服务注册中心替换内置eureka
 
-1.修改build.sh,/build.bat，将config-service和admin-service的maven编译命令更改为
+1.修改build.sh/build.bat，将config-service和admin-service的maven编译命令更改为
 ```shell
 mvn clean package -Pgithub,nacos-discovery -DskipTests -pl apollo-configservice,apollo-adminservice -am -Dapollo_profile=github,nacos-discovery -Dspring_datasource_url=$apollo_config_db_url -Dspring_datasource_username=$apollo_config_db_username -Dspring_datasource_password=$apollo_config_db_password
-
 ```
+
 2.在config目录下修改application-github.properties，配置nacos服务器地址
 ```properties
 nacos.discovery.server-addr=127.0.0.1:8848
