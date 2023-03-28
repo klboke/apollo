@@ -98,15 +98,15 @@ public class NotificationControllerTest {
             someDataCenter)).thenReturn(
         watchKeys);
 
-    DeferredResult<ResponseEntity<ApolloConfigNotification>>
-        deferredResult = controller
+    DeferredResult<ResponseEntity<ApolloConfigNotification>> deferredResult = controller
         .pollNotification(someAppId, someCluster, defaultNamespace, someDataCenter,
             someNotificationId, someClientIp);
 
     assertEquals(watchKeys.size(), deferredResults.size());
 
     for (String watchKey : watchKeys) {
-      assertTrue(deferredResults.get(watchKey).contains(deferredResult));
+      String deferredWatchKey = watchKey.toLowerCase();
+      assertTrue(deferredResults.get(deferredWatchKey).contains(deferredResult));
     }
   }
 
@@ -133,7 +133,8 @@ public class NotificationControllerTest {
     assertEquals(watchKeys.size(), deferredResults.size());
 
     for (String watchKey : watchKeys) {
-      assertTrue(deferredResults.get(watchKey).contains(deferredResult));
+      String deferredWatchKey = watchKey.toLowerCase();
+      assertTrue(deferredResults.get(deferredWatchKey).contains(deferredResult));
     }
   }
 
@@ -159,7 +160,8 @@ public class NotificationControllerTest {
     assertEquals(watchKeys.size(), deferredResults.size());
 
     for (String watchKey : watchKeys) {
-      assertTrue(deferredResults.get(watchKey).contains(deferredResult));
+      String deferredWatchKey = watchKey.toLowerCase();
+      assertTrue(deferredResults.get(deferredWatchKey).contains(deferredResult));
     }
   }
 

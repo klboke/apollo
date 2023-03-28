@@ -144,7 +144,7 @@ public class ConfigController {
       return null;
     }
 
-    ApolloConfig apolloConfig = new ApolloConfig(appId, appClusterNameLoaded, originalNamespace,
+    ApolloConfig apolloConfig = new ApolloConfig(appId, clusterName, originalNamespace,
         mergedReleaseKey);
     apolloConfig.setConfigurations(mergeReleaseConfigurations(releases));
 

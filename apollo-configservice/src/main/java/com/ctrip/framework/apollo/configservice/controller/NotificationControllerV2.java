@@ -161,14 +161,16 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     deferredResultWrapper.onCompletion(() -> {
       //unregister all keys
       for (String key : watchedKeys) {
-        deferredResults.remove(key, deferredResultWrapper);
+        String deferredWatchedKey = key.toLowerCase();
+        deferredResults.remove(deferredWatchedKey, deferredResultWrapper);
       }
       logWatchedKeys(watchedKeys, "Apollo.LongPoll.CompletedKeys");
     });
 
     //register all keys
     for (String key : watchedKeys) {
-      this.deferredResults.put(key, deferredResultWrapper);
+      String deferredWatchedKey = key.toLowerCase();
+      this.deferredResults.put(deferredWatchedKey, deferredResultWrapper);
     }
 
     logWatchedKeys(watchedKeys, "Apollo.LongPoll.RegisteredKeys");
@@ -250,8 +252,11 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
         }
         if (latestId > clientSideId) {
           ApolloConfigNotification notification = new ApolloConfigNotification(namespace, latestId);
-          namespaceWatchedKeys.stream().filter(latestNotifications::containsKey).forEach(namespaceWatchedKey ->
-              notification.addMessage(namespaceWatchedKey, latestNotifications.get(namespaceWatchedKey)));
+          namespaceWatchedKeys.stream()
+              .filter(latestNotifications::containsKey)
+              .forEach(namespaceWatchedKey ->
+              notification.addMessage(namespaceWatchedKey, latestNotifications.get(namespaceWatchedKey))
+              );
           newNotifications.add(notification);
         }
       }
@@ -275,13 +280,13 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
       logger.error("message format invalid - {}", content);
       return;
     }
-
-    if (!deferredResults.containsKey(content)) {
+    String deferredWatchedKey = content.toLowerCase();
+    if (!deferredResults.containsKey(deferredWatchedKey)) {
       return;
     }
 
     //create a new list to avoid ConcurrentModificationException
-    List<DeferredResultWrapper> results = Lists.newArrayList(deferredResults.get(content));
+    List<DeferredResultWrapper> results = Lists.newArrayList(deferredResults.get(deferredWatchedKey));
 
     ApolloConfigNotification configNotification = new ApolloConfigNotification(changedNamespace, message.getId());
     configNotification.addMessage(content, message.getId());

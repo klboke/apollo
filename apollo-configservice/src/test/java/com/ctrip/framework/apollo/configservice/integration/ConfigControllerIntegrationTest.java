@@ -275,7 +275,7 @@ public class ConfigControllerIntegrationTest extends AbstractBaseIntegrationTest
         "TEST-RELEASE-KEY6" + ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR + "TEST-RELEASE-KEY4",
         result.getReleaseKey());
     assertEquals(someAppId, result.getAppId());
-    assertEquals(someDC, result.getCluster());
+    assertEquals(someDefaultCluster, result.getCluster());
     assertEquals(somePublicNamespace, result.getNamespaceName());
     assertEquals("override-someDC-v1", result.getConfigurations().get("k1"));
     assertEquals("someDC-v2", result.getConfigurations().get("k2"));

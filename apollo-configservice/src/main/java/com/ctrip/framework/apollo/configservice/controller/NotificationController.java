@@ -121,7 +121,8 @@ public class NotificationController implements ReleaseMessageListener {
     } else {
       //register all keys
       for (String key : watchedKeys) {
-        this.deferredResults.put(key, deferredResult);
+        String deferredWatchedKey = key.toLowerCase();
+        this.deferredResults.put(deferredWatchedKey, deferredResult);
       }
 
       deferredResult
@@ -130,7 +131,8 @@ public class NotificationController implements ReleaseMessageListener {
       deferredResult.onCompletion(() -> {
         //unregister all keys
         for (String key : watchedKeys) {
-          deferredResults.remove(key, deferredResult);
+          String deferredWatchedKey = key.toLowerCase();
+          deferredResults.remove(deferredWatchedKey, deferredResult);
         }
         logWatchedKeys(watchedKeys, "Apollo.LongPoll.CompletedKeys");
       });
@@ -163,12 +165,13 @@ public class NotificationController implements ReleaseMessageListener {
         new ResponseEntity<>(
             new ApolloConfigNotification(keys.get(2), message.getId()), HttpStatus.OK);
 
-    if (!deferredResults.containsKey(content)) {
+    String deferredWatchedKey = content.toLowerCase();
+    if (!deferredResults.containsKey(deferredWatchedKey)) {
       return;
     }
     //create a new list to avoid ConcurrentModificationException
     List<DeferredResult<ResponseEntity<ApolloConfigNotification>>> results =
-        Lists.newArrayList(deferredResults.get(content));
+        Lists.newArrayList(deferredResults.get(deferredWatchedKey));
     logger.debug("Notify {} clients for key {}", results.size(), content);
 
     for (DeferredResult<ResponseEntity<ApolloConfigNotification>> result : results) {
