@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,13 @@ import static org.mockito.Mockito.times;
 import com.ctrip.framework.apollo.audit.annotation.OpType;
 import com.ctrip.framework.apollo.audit.constants.ApolloAuditConstants;
 import com.ctrip.framework.apollo.audit.spi.ApolloAuditOperatorSupplier;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.test.context.ContextConfiguration;
@@ -50,22 +50,18 @@ public class ApolloAuditTracerTest {
   final String activeSpanId = "100010001";
   final String operator = "luke";
 
-  @SpyBean
+  @MockitoSpyBean
   ApolloAuditTracer tracer;
 
-  @MockBean
+  @MockitoBean
   ApolloAuditScopeManager manager;
-  @MockBean
+  @MockitoBean
   ApolloAuditOperatorSupplier supplier;
 
   @BeforeEach
   public void beforeEach() {
     RequestContextHolder.resetRequestAttributes();
-    Mockito.reset(
-        tracer,
-        manager,
-        supplier
-    );
+    Mockito.reset(tracer, manager, supplier);
   }
 
   @Test
@@ -186,13 +182,13 @@ public class ApolloAuditTracerTest {
   public void testStartActiveSpan() {
     ApolloAuditSpan activeSpan = Mockito.mock(ApolloAuditSpan.class);
     {
-      doReturn(activeSpan).when(tracer).startSpan(Mockito.eq(opType), Mockito.eq(opName), Mockito.eq(description));
+      doReturn(activeSpan).when(tracer).startSpan(Mockito.eq(opType), Mockito.eq(opName),
+          Mockito.eq(description));
     }
     tracer.startActiveSpan(opType, opName, description);
-    Mockito.verify(tracer, Mockito.times(1))
-        .startSpan(Mockito.eq(opType), Mockito.eq(opName), Mockito.eq(description));
-    Mockito.verify(manager, times(1))
-        .activate(Mockito.eq(activeSpan));
+    Mockito.verify(tracer, Mockito.times(1)).startSpan(Mockito.eq(opType), Mockito.eq(opName),
+        Mockito.eq(description));
+    Mockito.verify(manager, times(1)).activate(Mockito.eq(activeSpan));
   }
 
   @Test

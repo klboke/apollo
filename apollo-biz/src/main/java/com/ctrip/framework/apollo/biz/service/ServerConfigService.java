@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,11 @@ package com.ctrip.framework.apollo.biz.service;
 
 import com.ctrip.framework.apollo.biz.entity.ServerConfig;
 import com.ctrip.framework.apollo.biz.repository.ServerConfigRepository;
+import com.ctrip.framework.apollo.common.exception.NotFoundException;
 import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Objects;
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -44,23 +45,37 @@ public class ServerConfigService {
 
   @Transactional
   public ServerConfig createOrUpdateConfig(ServerConfig serverConfig) {
+    if (Objects.isNull(serverConfig.getCluster())) {
+      serverConfig.setCluster("default");
+    }
 
-    ServerConfig storedConfig = serverConfigRepository.findByKey(serverConfig.getKey());
+    ServerConfig storedConfig = serverConfigRepository.findTopByKeyAndCluster(serverConfig.getKey(),
+        serverConfig.getCluster());
 
-    if (Objects.isNull(storedConfig)) {//create
-      serverConfig.setId(0L);//为空，设置ID 为0，jpa执行新增操作
-      if(Objects.isNull(serverConfig.getCluster())){
-        serverConfig.setCluster("default");
-      }
+    if (Objects.isNull(storedConfig)) {// create
+      serverConfig.setId(0L);// 为空，设置ID 为0，jpa执行新增操作
       return serverConfigRepository.save(serverConfig);
     }
 
-    //update
+    // update
     storedConfig.setComment(serverConfig.getComment());
     storedConfig.setDataChangeLastModifiedBy(serverConfig.getDataChangeLastModifiedBy());
     storedConfig.setValue(serverConfig.getValue());
 
     return serverConfigRepository.save(storedConfig);
+  }
+
+  @Transactional
+  public void deleteConfig(String key, String cluster, String operator) {
+    ServerConfig storedConfig = serverConfigRepository.findTopByKeyAndCluster(key, cluster);
+
+    if (Objects.isNull(storedConfig)) {
+      throw new NotFoundException("server config not found for key:%s, cluster:%s", key, cluster);
+    }
+
+    storedConfig.setDeleted(true);
+    storedConfig.setDataChangeLastModifiedBy(operator);
+    serverConfigRepository.save(storedConfig);
   }
 
 }

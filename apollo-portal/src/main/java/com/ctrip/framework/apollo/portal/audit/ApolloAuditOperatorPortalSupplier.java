@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.ctrip.framework.apollo.portal.audit;
 
 import com.ctrip.framework.apollo.audit.spi.ApolloAuditOperatorSupplier;
 import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -25,14 +26,15 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(prefix = "apollo.audit.log", name = "enabled", havingValue = "true")
 public class ApolloAuditOperatorPortalSupplier implements ApolloAuditOperatorSupplier {
 
-  private final UserInfoHolder userInfoHolder;
+  private final ObjectProvider<UserInfoHolder> userInfoHolderProvider;
 
-  public ApolloAuditOperatorPortalSupplier(UserInfoHolder userInfoHolder) {
-    this.userInfoHolder = userInfoHolder;
+  public ApolloAuditOperatorPortalSupplier(ObjectProvider<UserInfoHolder> userInfoHolderProvider) {
+    this.userInfoHolderProvider = userInfoHolderProvider;
   }
 
   @Override
   public String getOperator() {
-    return userInfoHolder.getUser().getName();
+    UserInfoHolder userInfoHolder = userInfoHolderProvider.getIfAvailable();
+    return userInfoHolder == null ? null : userInfoHolder.getUser().getName();
   }
 }

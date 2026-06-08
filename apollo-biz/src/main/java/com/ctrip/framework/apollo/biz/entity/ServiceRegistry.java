@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@ package com.ctrip.framework.apollo.biz.entity;
 import com.ctrip.framework.apollo.biz.registry.ServiceInstance;
 import java.time.LocalDateTime;
 import java.util.Map;
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.PrePersist;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 /**
  * use database as a registry instead of eureka, zookeeper, consul etc.
@@ -82,15 +82,10 @@ public class ServiceRegistry {
 
   @Override
   public String toString() {
-    return "Registry{" +
-        "id=" + id +
-        ", serviceName='" + serviceName + '\'' +
-        ", uri='" + uri + '\'' +
-        ", cluster='" + cluster + '\'' +
-        ", metadata='" + metadata + '\'' +
-        ", dataChangeCreatedTime=" + dataChangeCreatedTime +
-        ", dataChangeLastModifiedTime=" + dataChangeLastModifiedTime +
-        '}';
+    return "Registry{" + "id=" + id + ", serviceName='" + serviceName + '\'' + ", uri='" + uri
+        + '\'' + ", cluster='" + cluster + '\'' + ", metadata='" + metadata + '\''
+        + ", dataChangeCreatedTime=" + dataChangeCreatedTime + ", dataChangeLastModifiedTime="
+        + dataChangeLastModifiedTime + '}';
   }
 
   public long getId() {

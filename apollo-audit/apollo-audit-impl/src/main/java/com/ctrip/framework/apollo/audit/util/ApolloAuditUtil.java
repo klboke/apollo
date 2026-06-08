@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.persistence.Id;
+import jakarta.persistence.Id;
 
 public class ApolloAuditUtil {
 
@@ -54,8 +54,9 @@ public class ApolloAuditUtil {
   }
 
   public static String getApolloAuditLogTableName(Class<?> clazz) {
-    return clazz.isAnnotationPresent(ApolloAuditLogDataInfluenceTable.class) ? clazz.getAnnotation(
-        ApolloAuditLogDataInfluenceTable.class).tableName() : null;
+    return clazz.isAnnotationPresent(ApolloAuditLogDataInfluenceTable.class)
+        ? clazz.getAnnotation(ApolloAuditLogDataInfluenceTable.class).tableName()
+        : null;
   }
 
   public static Field getPersistenceIdFieldByAnnotation(Class<?> clazz) {

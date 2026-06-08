@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,20 +24,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 
-import javax.persistence.Column;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.MappedSuperclass;
-import javax.persistence.PrePersist;
-import javax.persistence.PreRemove;
-import javax.persistence.PreUpdate;
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import org.springframework.data.domain.DomainEvents;
 
 @MappedSuperclass
-@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
 public abstract class BaseEntity {
 
   @Id
@@ -124,10 +121,10 @@ public abstract class BaseEntity {
   @PrePersist
   protected void prePersist() {
     if (this.dataChangeCreatedTime == null) {
-        dataChangeCreatedTime = new Date();
+      dataChangeCreatedTime = new Date();
     }
     if (this.dataChangeLastModifiedTime == null) {
-        dataChangeLastModifiedTime = new Date();
+      dataChangeLastModifiedTime = new Date();
     }
   }
 
@@ -149,7 +146,8 @@ public abstract class BaseEntity {
         .add("dataChangeLastModifiedTime", dataChangeLastModifiedTime);
   }
 
-  public String toString(){
+  @Override
+  public String toString() {
     return toStringHelper().toString();
   }
 

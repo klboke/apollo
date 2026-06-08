@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,11 @@ import com.ctrip.framework.apollo.common.dto.ItemDTO;
 import com.ctrip.framework.apollo.common.dto.NamespaceDTO;
 import com.ctrip.framework.apollo.common.entity.App;
 import com.ctrip.framework.apollo.common.entity.AppNamespace;
+import com.ctrip.framework.apollo.common.exception.BadRequestException;
 import com.ctrip.framework.apollo.core.enums.ConfigFileFormat;
 import com.ctrip.framework.apollo.portal.AbstractUnitTest;
-import com.ctrip.framework.apollo.portal.component.PermissionValidator;
+import com.ctrip.framework.apollo.portal.component.UnifiedPermissionValidator;
+import com.ctrip.framework.apollo.portal.component.UserPermissionValidator;
 import com.ctrip.framework.apollo.portal.entity.bo.ItemBO;
 import com.ctrip.framework.apollo.portal.entity.bo.NamespaceBO;
 import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
@@ -32,6 +34,7 @@ import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
 
 import org.assertj.core.util.Files;
 import org.assertj.core.util.Lists;
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -59,35 +62,55 @@ import static org.mockito.Mockito.when;
 public class ConfigsExportServiceTest extends AbstractUnitTest {
 
   @Mock
-  private AppService                appService;
+  private AppService appService;
   @Mock
-  private ClusterService            clusterService;
+  private ClusterService clusterService;
   @Mock
-  private NamespaceService          namespaceService;
+  private NamespaceService namespaceService;
   @Mock
-  private PermissionValidator       permissionValidator;
+  private UserPermissionValidator userPermissionValidator;
   @Mock
-  private UserInfoHolder            userInfoHolder;
+  private UserInfoHolder userInfoHolder;
   @Mock
-  private AppNamespaceService       appNamespaceService;
+  private AppNamespaceService appNamespaceService;
   @InjectMocks
-  private ConfigsExportService      configsExportService;
+  private ConfigsExportService configsExportService;
   @Mock
-  private ItemService               itemService;
+  private ItemService itemService;
   @Mock
   private ApplicationEventPublisher applicationEventPublisher;
   @Mock
   private RoleInitializationService roleInitializationService;
   @InjectMocks
-  private ConfigsImportService      configsImportService;
+  private ConfigsImportService configsImportService;
+
+  @Mock
+  private UnifiedPermissionValidator unifiedPermissionValidator;
 
   @Test
   public void testNamespaceExportImport() throws FileNotFoundException {
+    // Test with fillItemDetail = true
+    testExportImportScenario(true);
+  }
+
+  @Test
+  public void testNamespaceExportImportWithFillItemDetail() throws FileNotFoundException {
+    // Test with fillItemDetail = false
+    testExportImportScenario(false);
+  }
+
+  @Test
+  public void testAppConfigExportImportWithFillItemDetail() throws FileNotFoundException {
+    testAppConfigExportImportScenario();
+  }
+
+  private void testExportImportScenario(boolean fillItemDetail) throws FileNotFoundException {
+
     File temporaryFolder = Files.newTemporaryFolder();
     temporaryFolder.deleteOnExit();
     String filePath = temporaryFolder + File.separator + "export.zip";
 
-    //export config
+    // export config
     UserInfo userInfo = genUser();
     when(userInfoHolder.getUser()).thenReturn(userInfo);
 
@@ -106,7 +129,8 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     AppNamespace app1Namespace2 = genAppNamespace(appId1, appNamespaceName2, true);
     AppNamespace app2Namespace1 = genAppNamespace(appId2, appNamespaceName1, false);
 
-    List<AppNamespace> appNamespaces = Lists.newArrayList(app1Namespace1, app1Namespace2, app2Namespace1);
+    List<AppNamespace> appNamespaces =
+        Lists.newArrayList(app1Namespace1, app1Namespace2, app2Namespace1);
 
     String clusterName1 = "c1";
     String clusterName2 = "c2";
@@ -116,12 +140,8 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     ClusterDTO app2Cluster1 = genCluster(clusterName1, appId2);
     ClusterDTO app2Cluster2 = genCluster(clusterName2, appId2);
 
-    List<ClusterDTO>
-        app1Clusters =
-        Lists.newArrayList(app1Cluster1, app1Cluster2);
-    List<ClusterDTO>
-        app2Clusters =
-        Lists.newArrayList(app2Cluster1, app2Cluster2);
+    List<ClusterDTO> app1Clusters = Lists.newArrayList(app1Cluster1, app1Cluster2);
+    List<ClusterDTO> app2Clusters = Lists.newArrayList(app2Cluster1, app2Cluster2);
 
     ItemBO item1 = genItem("k1", "v1");
     ItemBO item2 = genItem("k2", "v2");
@@ -131,7 +151,8 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     String namespaceName2 = "namespace2";
     NamespaceBO app1Cluster1Namespace1 = genNamespace(app1, app1Cluster1, items, namespaceName1);
     NamespaceBO app1Cluster1Namespace2 = genNamespace(app1, app1Cluster1, items, namespaceName2);
-    List<NamespaceBO> app1Cluster1Namespace = Lists.newArrayList(app1Cluster1Namespace1, app1Cluster1Namespace2);
+    List<NamespaceBO> app1Cluster1Namespace =
+        Lists.newArrayList(app1Cluster1Namespace1, app1Cluster1Namespace2);
     NamespaceBO app1Cluster2Namespace1 = genNamespace(app1, app1Cluster2, items, namespaceName1);
     List<NamespaceBO> app1Cluster2Namespace = Lists.newArrayList(app1Cluster2Namespace1);
 
@@ -139,23 +160,31 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     List<NamespaceBO> app2Cluster1Namespace = Lists.newArrayList(app2Cluster1Namespace1);
     NamespaceBO app2Cluster2Namespace1 = genNamespace(app2, app1Cluster2, items, namespaceName1);
     NamespaceBO app2Cluster2Namespace2 = genNamespace(app2, app1Cluster2, items, namespaceName2);
-    List<NamespaceBO> app2Cluster2Namespace = Lists.newArrayList(app2Cluster2Namespace1, app2Cluster2Namespace2);
+    List<NamespaceBO> app2Cluster2Namespace =
+        Lists.newArrayList(app2Cluster2Namespace1, app2Cluster2Namespace2);
 
     when(appService.findAll()).thenReturn(exportApps);
     when(appNamespaceService.findAll()).thenReturn(appNamespaces);
-    when(permissionValidator.isAppAdmin(any())).thenReturn(true);
+    when(userPermissionValidator.isAppAdmin(any())).thenReturn(true);
+    when(unifiedPermissionValidator.isAppAdmin(any())).thenReturn(true);
+    when(unifiedPermissionValidator.hasAssignRolePermission(anyString())).thenReturn(true);
+    when(unifiedPermissionValidator.isSuperAdmin()).thenReturn(true);
     when(clusterService.findClusters(env, appId1)).thenReturn(app1Clusters);
     when(clusterService.findClusters(env, appId2)).thenReturn(app2Clusters);
-    when(namespaceService.findNamespaceBOs(appId1, Env.DEV, clusterName1, false)).thenReturn(app1Cluster1Namespace);
-    when(namespaceService.findNamespaceBOs(appId1, Env.DEV, clusterName2, false)).thenReturn(app1Cluster2Namespace);
-    when(namespaceService.findNamespaceBOs(appId2, Env.DEV, clusterName1, false)).thenReturn(app2Cluster1Namespace);
-    when(namespaceService.findNamespaceBOs(appId2, Env.DEV, clusterName2, false)).thenReturn(app2Cluster2Namespace);
+    when(namespaceService.findNamespaceBOs(appId1, Env.DEV, clusterName1, fillItemDetail, false))
+        .thenReturn(app1Cluster1Namespace);
+    when(namespaceService.findNamespaceBOs(appId1, Env.DEV, clusterName2, fillItemDetail, false))
+        .thenReturn(app1Cluster2Namespace);
+    when(namespaceService.findNamespaceBOs(appId2, Env.DEV, clusterName1, fillItemDetail, false))
+        .thenReturn(app2Cluster1Namespace);
+    when(namespaceService.findNamespaceBOs(appId2, Env.DEV, clusterName2, fillItemDetail, false))
+        .thenReturn(app2Cluster2Namespace);
 
     FileOutputStream fileOutputStream = new FileOutputStream(filePath);
 
     configsExportService.exportData(fileOutputStream, Lists.newArrayList(Env.DEV));
 
-    //import config
+    // import config
     when(appNamespaceService.findByAppIdAndName(any(), any())).thenReturn(null);
     when(appNamespaceService.importAppNamespaceInLocal(any())).thenReturn(app1Namespace1);
     when(appService.load(any())).thenReturn(null);
@@ -163,18 +192,24 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
 
     when(clusterService.loadCluster(any(), any(), any())).thenThrow(new RuntimeException());
 
-    when(namespaceService.loadNamespaceBaseInfo(any(), any(), any(), any())).thenThrow(new RuntimeException());
-    when(namespaceService.createNamespace(any(), any())).thenReturn(genNamespaceDTO(1));
+    when(namespaceService.loadNamespaceBaseInfo(any(), any(), any(), any()))
+        .thenThrow(new RuntimeException());
+    when(namespaceService.createNamespace(any(), any(), anyString()))
+        .thenReturn(genNamespaceDTO(1));
 
     when(itemService.findItems(any(), any(), any(), any())).thenReturn(Lists.newArrayList());
-    HttpStatusCodeException itemNotFoundException = new HttpClientErrorException(HttpStatus.NOT_FOUND);
-    when(itemService.loadItem(any(), any(), any(), any(), anyString())).thenThrow(itemNotFoundException);
+    HttpStatusCodeException itemNotFoundException =
+        new HttpClientErrorException(HttpStatus.NOT_FOUND);
+    when(itemService.loadItem(any(), any(), any(), any(), anyString()))
+        .thenThrow(itemNotFoundException);
+
 
     FileInputStream fileInputStream = new FileInputStream(filePath);
     ZipInputStream zipInputStream = new ZipInputStream(fileInputStream);
 
     try {
-      configsImportService.importDataFromZipFile(Lists.newArrayList(Env.DEV), zipInputStream, false);
+      configsImportService.importDataFromZipFile(Lists.newArrayList(Env.DEV), zipInputStream, false,
+          userInfo.getUserId());
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -182,14 +217,121 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     verify(appNamespaceService, times(3)).importAppNamespaceInLocal(any());
     verify(applicationEventPublisher, times(3)).publishEvent(any());
 
-    verify(appService, times(2)).createAppInRemote(any(), any());
+    verify(appService, times(2)).createAppInRemote(any(), any(), anyString());
 
-    verify(clusterService, times(4)).createCluster(any(), any());
+    verify(clusterService, times(4)).createCluster(any(), any(), anyString());
 
-    verify(namespaceService, times(6)).createNamespace(any(), any());
-    verify(roleInitializationService,times(6)).initNamespaceRoles(any(), any(), anyString());
-    verify(roleInitializationService,times(6)).initNamespaceEnvRoles(any(), any(), anyString());
-    verify(itemService, times(12)).createItem(any(), any(), any(), any(), any());
+    if (fillItemDetail) {
+      verify(namespaceService, times(6)).createNamespace(any(), any(), anyString());
+      verify(roleInitializationService, times(6)).initNamespaceRoles(any(), any(), anyString());
+      verify(roleInitializationService, times(6)).initNamespaceEnvRoles(any(), any(), anyString());
+      verify(itemService, times(12)).createItem(any(), any(), any(), any(), any());
+    }
+  }
+
+  private void testAppConfigExportImportScenario() throws FileNotFoundException {
+
+    File temporaryFolder = Files.newTemporaryFolder();
+    temporaryFolder.deleteOnExit();
+    String filePath = temporaryFolder + File.separator + "export.zip";
+
+    // export config
+    UserInfo userInfo = genUser();
+    when(userInfoHolder.getUser()).thenReturn(userInfo);
+
+    Env env = Env.DEV;
+    String appId1 = "app1";
+    String appId2 = "app2";
+
+    App app1 = genApp(appId1, appId1, "org1", "org2");
+
+    String clusterName1 = "c1";
+    String clusterName2 = "c2";
+    ClusterDTO app1Cluster1 = genCluster(clusterName1, appId1);
+    ClusterDTO app1Cluster2 = genCluster(clusterName2, appId1);
+
+    ItemBO item1 = genItem("k1", "v1");
+    ItemBO item2 = genItem("k2", "v2");
+    List<ItemBO> items = Lists.newArrayList(item1, item2);
+
+    String namespaceName1 = "namespace1";
+    String namespaceName2 = "namespace2";
+    NamespaceBO app1Cluster1Namespace1 = genNamespace(app1, app1Cluster1, items, namespaceName1);
+    NamespaceBO app1Cluster1Namespace2 = genNamespace(app1, app1Cluster1, items, namespaceName2);
+    List<NamespaceBO> app1Cluster1Namespace =
+        Lists.newArrayList(app1Cluster1Namespace1, app1Cluster1Namespace2);
+
+    when(appService.load(appId1)).thenReturn(app1);
+    when(userPermissionValidator.isAppAdmin(any())).thenReturn(true);
+    when(unifiedPermissionValidator.isAppAdmin(any())).thenReturn(true);
+    when(unifiedPermissionValidator.hasAssignRolePermission(anyString())).thenReturn(true);
+    when(clusterService.loadCluster(appId1, env, clusterName1)).thenReturn(app1Cluster1);
+    when(namespaceService.findNamespaceBOs(appId1, Env.DEV, clusterName1, true, false))
+        .thenReturn(app1Cluster1Namespace);
+
+    FileOutputStream fileOutputStream = new FileOutputStream(filePath);
+
+    try {
+      configsExportService.exportAppConfigByEnvAndCluster(appId2, env, clusterName1,
+          fileOutputStream);
+    } catch (BadRequestException e) {
+      Assert.assertEquals("App not found: " + appId2, e.getMessage());
+    }
+    try {
+      configsExportService.exportAppConfigByEnvAndCluster(appId1, env, clusterName2,
+          fileOutputStream);
+    } catch (BadRequestException e) {
+      Assert.assertEquals("The app does not exist in the specified environment and cluster.",
+          e.getMessage());
+    }
+    configsExportService.exportAppConfigByEnvAndCluster(appId1, env, clusterName1,
+        fileOutputStream);
+
+    // import config
+    when(clusterService.loadCluster(appId1, env, clusterName2)).thenReturn(app1Cluster2);
+    when(namespaceService.loadNamespaceBaseInfo(any(), any(), any(), any()))
+        .thenThrow(new RuntimeException());
+    when(namespaceService.createNamespace(any(), any(), anyString()))
+        .thenReturn(genNamespaceDTO(1));
+
+    when(itemService.findItems(any(), any(), any(), any())).thenReturn(Lists.newArrayList());
+    HttpStatusCodeException itemNotFoundException =
+        new HttpClientErrorException(HttpStatus.NOT_FOUND);
+    when(itemService.loadItem(any(), any(), any(), any(), anyString()))
+        .thenThrow(itemNotFoundException);
+
+
+    FileInputStream fileInputStream = new FileInputStream(filePath);
+    ZipInputStream zipInputStream = new ZipInputStream(fileInputStream);
+    try {
+      configsImportService.importAppConfigFromZipFile(appId2, env, clusterName1, zipInputStream,
+          false, userInfo.getUserId());
+    } catch (Exception e) {
+      Assert.assertEquals("The app does not exist in the specified environment and cluster.",
+          e.getMessage());
+    }
+
+    fileInputStream = new FileInputStream(filePath);
+    zipInputStream = new ZipInputStream(fileInputStream);
+    try {
+      configsImportService.importAppConfigFromZipFile(appId1, env, clusterName2, zipInputStream,
+          false, userInfo.getUserId());
+    } catch (Exception e) {
+      Assert.assertEquals("The content of the file to be imported is incorrect.", e.getMessage());
+    }
+
+    fileInputStream = new FileInputStream(filePath);
+    zipInputStream = new ZipInputStream(fileInputStream);
+    try {
+      configsImportService.importAppConfigFromZipFile(appId1, env, clusterName1, zipInputStream,
+          false, userInfo.getUserId());
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    verify(namespaceService, times(2)).createNamespace(any(), any(), anyString());
+    verify(roleInitializationService, times(2)).initNamespaceRoles(any(), any(), anyString());
+    verify(roleInitializationService, times(2)).initNamespaceEnvRoles(any(), any(), anyString());
+    verify(itemService, times(4)).createItem(any(), any(), any(), any(), any());
   }
 
   private App genApp(String name, String appId, String orgId, String orgName) {
@@ -218,7 +360,8 @@ public class ConfigsExportServiceTest extends AbstractUnitTest {
     return appNamespace;
   }
 
-  private NamespaceBO genNamespace(App app, ClusterDTO clusterDTO, List<ItemBO> itemBOS, String namespaceName) {
+  private NamespaceBO genNamespace(App app, ClusterDTO clusterDTO, List<ItemBO> itemBOS,
+      String namespaceName) {
     NamespaceBO namespaceBO = new NamespaceBO();
 
     NamespaceDTO baseInfo = new NamespaceDTO();

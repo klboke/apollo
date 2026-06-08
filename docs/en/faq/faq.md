@@ -11,13 +11,13 @@ A grouping of different configurations under one application.
 Please refer to [Apollo core concept "Namespace"](en/design/apollo-core-concept-namespace)
 
 ## 4. I want to access Apollo, how do I do it?
-Please refer to [Apollo user guide](en/usage/apollo-user-guide)
+Please refer to [Apollo user guide](en/portal/apollo-user-guide)
 
 ## 5. My application needs different configurations for different server rooms, does Apollo support it?
-Apollo is supported. Please refer to `III. Cluster independent configuration instructions` in [Apollo User Guide](en/usage/apollo-user-guide?id=iii-cluster-independent-configuration-instructions)
+Apollo is supported. Please refer to `III. Cluster independent configuration instructions` in [Apollo User Guide](en/portal/apollo-user-guide?id=iii-cluster-independent-configuration-instructions)
 
 ## 6. I have multiple applications that need to use the same configuration, can Apollo support it?
-Apollo is supported. Please refer to `IV. Using the same configuration for multiple AppId` in [Apollo User Guide](en/usage/apollo-user-guide?id=iv-using-the-same-configuration-for-multiple-appid).
+Apollo is supported. Please refer to `IV. Using the same configuration for multiple AppId` in [Apollo User Guide](en/portal/apollo-user-guide?id=iv-using-the-same-configuration-for-multiple-appid).
 
 ## 7. Does Apollo support view permission control or configuration encryption?
 Starting from version 1.1.0, apollo-portal adds support for view permissions, which can support configuring an environment to allow only project members to view the configuration of a private Namespace.
@@ -56,3 +56,18 @@ Here's a quick summary.
 Since we are not experienced users of `Disconf`, we can't give a subjective evaluation.
 However, an enthusiastic user in the Apollo support group [@Krast](https://github.com/krast) made an [Open Source Configuration Center Comparison Matrix](https://github.com/apolloconfig/apollo/files/983064/default.pdf), which can be consulted.
 
+## 11. I get "OpenAppDTO" or other `OpenXxxDTO` classes not found after pulling the latest code, what should I do?
+The `apollo-portal` module generates the `OpenXxxDTO` classes from OpenAPI YAML definitions at build time.
+Run a Maven compile phase to trigger the code generation:
+
+```bash
+mvn clean compile -pl apollo-portal -am
+```
+
+You can also execute the command inside the `apollo-portal` module:
+
+```bash
+mvn clean compile
+```
+
+After it finishes, the OpenAPI DTOs will be regenerated under `com.ctrip.framework.apollo.openapi.model`.

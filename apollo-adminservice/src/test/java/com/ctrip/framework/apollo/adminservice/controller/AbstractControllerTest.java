@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,33 +17,48 @@
 package com.ctrip.framework.apollo.adminservice.controller;
 
 import com.ctrip.framework.apollo.AdminServiceTestConfiguration;
-
+import org.junit.After;
+import org.junit.Before;
+import org.mockito.MockitoAnnotations;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+import org.springframework.boot.http.converter.autoconfigure.HttpMessageConverters;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = AdminServiceTestConfiguration.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = AdminServiceTestConfiguration.class,
+    webEnvironment = WebEnvironment.RANDOM_PORT)
 public abstract class AbstractControllerTest {
 
   @Autowired
   private HttpMessageConverters httpMessageConverters;
 
-  protected RestTemplate restTemplate = (new TestRestTemplate()).getRestTemplate();
+  private AutoCloseable mocks;
+  protected RestTemplate restTemplate = new RestTemplate();
 
   @PostConstruct
   private void postConstruct() {
     restTemplate.setErrorHandler(new DefaultResponseErrorHandler());
     restTemplate.setMessageConverters(httpMessageConverters.getConverters());
+  }
+
+  @Before
+  public void openMocks() {
+    mocks = MockitoAnnotations.openMocks(this);
+  }
+
+  @After
+  public void closeMocks() throws Exception {
+    if (mocks != null) {
+      mocks.close();
+    }
   }
 
   @Value("${local.server.port}")
@@ -65,7 +80,7 @@ public abstract class AbstractControllerTest {
     return url("/apps/{appId}/clusters/{clusterName}");
   }
 
-  protected String itemBaseUrl(){
+  protected String itemBaseUrl() {
     return url("/apps/{appId}/clusters/{clusterName}/namespaces/{namespaceName}/items");
   }
 }

@@ -14,11 +14,11 @@
  * limitations under the License.
  *
  */
-appService.service('ExportService', ['$resource', '$q', function ($resource, $q) {
+appService.service('ExportService', ['$resource', '$q', 'AppUtil', function ($resource, $q, AppUtil) {
     var resource = $resource('', {}, {
         importConfig: {
             method: 'POST',
-            url: '/import',
+            url: AppUtil.prefixPath() + '/openapi/v1/import',
             headers: {'Content-Type': undefined},
         }
     });

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,8 +32,7 @@ import org.springframework.security.crypto.scrypt.SCryptPasswordEncoder;
  */
 public final class ApolloPasswordEncoderFactory {
 
-  private ApolloPasswordEncoderFactory() {
-  }
+  private ApolloPasswordEncoderFactory() {}
 
   /**
    * Creates a {@link DelegatingPasswordEncoder} with default mappings {@link
@@ -44,7 +43,8 @@ public final class ApolloPasswordEncoderFactory {
    */
   @SuppressWarnings("deprecation")
   public static PasswordEncoder createDelegatingPasswordEncoder() {
-    // copy from PasswordEncoderFactories, and it's should follow the upgrade of the PasswordEncoderFactories
+    // copy from PasswordEncoderFactories, and it's should follow the upgrade of the
+    // PasswordEncoderFactories
     String encodingId = "bcrypt";
     Map<String, PasswordEncoder> encoders = new HashMap<>();
     encoders.put(encodingId, new BCryptPasswordEncoder());
@@ -54,23 +54,25 @@ public final class ApolloPasswordEncoderFactory {
         new org.springframework.security.crypto.password.MessageDigestPasswordEncoder("MD5"));
     encoders.put("noop",
         org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance());
-    encoders.put("pbkdf2", new Pbkdf2PasswordEncoder());
-    encoders.put("scrypt", new SCryptPasswordEncoder());
+    encoders.put("pbkdf2", Pbkdf2PasswordEncoder.defaultsForSpringSecurity_v5_8());
+    encoders.put("scrypt", SCryptPasswordEncoder.defaultsForSpringSecurity_v5_8());
     encoders.put("SHA-1",
         new org.springframework.security.crypto.password.MessageDigestPasswordEncoder("SHA-1"));
     encoders.put("SHA-256",
         new org.springframework.security.crypto.password.MessageDigestPasswordEncoder("SHA-256"));
-    encoders
-        .put("sha256", new org.springframework.security.crypto.password.StandardPasswordEncoder());
-    encoders.put("argon2", new Argon2PasswordEncoder());
+    encoders.put("sha256",
+        new org.springframework.security.crypto.password.StandardPasswordEncoder());
+    encoders.put("argon2", Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8());
 
     // placeholder encoder for oidc
     encoders.put(PlaceholderPasswordEncoder.ENCODING_ID, new PlaceholderPasswordEncoder());
-    DelegatingPasswordEncoder delegatingPasswordEncoder = new DelegatingPasswordEncoder(encodingId,
-        encoders);
+    DelegatingPasswordEncoder delegatingPasswordEncoder =
+        new DelegatingPasswordEncoder(encodingId, encoders);
 
-    // todo: adapt the old password, and it should be removed in the next feature version of the 1.9.x
-    delegatingPasswordEncoder.setDefaultPasswordEncoderForMatches(new PasswordEncoderAdapter(encoders.get(encodingId)));
+    // todo: adapt the old password, and it should be removed in the next feature version of the
+    // 1.9.x
+    delegatingPasswordEncoder
+        .setDefaultPasswordEncoderForMatches(new PasswordEncoderAdapter(encoders.get(encodingId)));
     return delegatingPasswordEncoder;
   }
 }

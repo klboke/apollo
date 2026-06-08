@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,10 @@ public class BadRequestException extends AbstractApolloHttpException {
     return new BadRequestException("orgId can not be blank");
   }
 
+  public static BadRequestException rateLimitIsInvalid() {
+    return new BadRequestException("rate limit must be greater than 1");
+  }
+
   public static BadRequestException itemAlreadyExists(String itemKey) {
     return new BadRequestException("item already exists for itemKey:%s", itemKey);
   }
@@ -61,11 +65,13 @@ public class BadRequestException extends AbstractApolloHttpException {
   }
 
   public static BadRequestException appNamespaceNotExists(String appId, String namespaceName) {
-    return new BadRequestException("appNamespace not exist for appId:%s namespaceName:%s", appId, namespaceName);
+    return new BadRequestException("appNamespace not exist for appId:%s namespaceName:%s", appId,
+        namespaceName);
   }
 
   public static BadRequestException appNamespaceAlreadyExists(String appId, String namespaceName) {
-    return new BadRequestException("appNamespace already exists for appId:%s namespaceName:%s", appId, namespaceName);
+    return new BadRequestException("appNamespace already exists for appId:%s namespaceName:%s",
+        appId, namespaceName);
   }
 
   public static BadRequestException invalidNamespaceFormat(String format) {

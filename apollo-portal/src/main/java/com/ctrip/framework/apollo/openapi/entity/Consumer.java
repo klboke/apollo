@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,17 @@ package com.ctrip.framework.apollo.openapi.entity;
 import com.ctrip.framework.apollo.common.entity.BaseEntity;
 
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "`Consumer`")
-@SQLDelete(sql = "Update Consumer set IsDeleted = true, DeletedAt = ROUND(UNIX_TIMESTAMP(NOW(4))*1000) where Id = ?")
-@Where(clause = "`IsDeleted` = false")
+@SQLDelete(
+    sql = "Update `Consumer` set IsDeleted = true, DeletedAt = ROUND(UNIX_TIMESTAMP(NOW(4))*1000) where Id = ?")
+@SQLRestriction("`IsDeleted` = false")
 public class Consumer extends BaseEntity {
 
   @Column(name = "`Name`", nullable = false)
@@ -99,10 +100,8 @@ public class Consumer extends BaseEntity {
 
   @Override
   public String toString() {
-    return toStringHelper().add("name", name).add("appId", appId)
-        .add("orgId", orgId)
-        .add("orgName", orgName)
-        .add("ownerName", ownerName)
-        .add("ownerEmail", ownerEmail).toString();
+    return toStringHelper().add("name", name).add("appId", appId).add("orgId", orgId)
+        .add("orgName", orgName).add("ownerName", ownerName).add("ownerEmail", ownerEmail)
+        .toString();
   }
 }

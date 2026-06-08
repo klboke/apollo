@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,9 +23,10 @@ import com.ctrip.framework.apollo.audit.api.ApolloAuditLogApi;
 import com.ctrip.framework.apollo.common.entity.App;
 import com.ctrip.framework.apollo.common.exception.BadRequestException;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
+import com.ctrip.framework.apollo.portal.component.PortalSettings;
 import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.repository.AppRepository;
-import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
 import com.ctrip.framework.apollo.portal.spi.UserService;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,7 +39,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.ContextConfiguration;
 
@@ -55,70 +56,60 @@ class AppServiceTest {
   @Autowired
   AppService appService;
 
-  @MockBean
-  UserInfoHolder userInfoHolder;
-  @MockBean
+  @MockitoBean
   AdminServiceAPI.AppAPI appAPI;
-  @MockBean
+  @MockitoBean
   AppRepository appRepository;
-  @MockBean
+  @MockitoBean
   ClusterService clusterService;
-  @MockBean
+  @MockitoBean
   AppNamespaceService appNamespaceService;
-  @MockBean
+  @MockitoBean
   RoleInitializationService roleInitializationService;
-  @MockBean
+  @MockitoBean
   RolePermissionService rolePermissionService;
-  @MockBean
+  @MockitoBean
   FavoriteService favoriteService;
-  @MockBean
+  @MockitoBean
   UserService userService;
-  @MockBean
+  @MockitoBean
   ApplicationEventPublisher publisher;
-  @MockBean
+  @MockitoBean
   ApolloAuditLogApi apolloAuditLogApi;
+  @MockitoBean
+  PortalSettings portalSettings;
 
   @BeforeEach
   void beforeEach() {
     // reset the mock after each test
-    Mockito.reset(
-        userInfoHolder,
-        appAPI,
-        appRepository,
-        clusterService,
-        appNamespaceService,
-        roleInitializationService,
-        rolePermissionService,
-        favoriteService,
-        userService,
-        publisher,
-        apolloAuditLogApi
-    );
-    UserInfo userInfo = new UserInfo();
-    userInfo.setUserId(OPERATOR_USER_ID);
-    Mockito.when(userInfoHolder.getUser())
-        .thenReturn(userInfo);
+    Mockito.reset(appAPI, appRepository, clusterService, appNamespaceService,
+        roleInitializationService, rolePermissionService, favoriteService, userService, publisher,
+        apolloAuditLogApi);
   }
 
   @Test
   void createAppAndAddRolePermissionButAppAlreadyExists() {
-    Mockito.when(appRepository.findByAppId(Mockito.any()))
-        .thenReturn(new App());
+    Mockito.when(appRepository.findByAppId(Mockito.any())).thenReturn(new App());
 
-    assertThrows(
-        BadRequestException.class,
-        () -> appService.createAppAndAddRolePermission(new App(), Collections.emptySet())
-    );
+    assertThrows(BadRequestException.class, () -> appService
+        .createAppAndAddRolePermission(new App(), Collections.emptySet(), OPERATOR_USER_ID));
   }
 
   @Test
   void createAppAndAddRolePermissionButOwnerNotExists() {
-    Mockito.when(userService.findByUserId(Mockito.any()))
-        .thenReturn(null);
-    assertThrows(
-        BadRequestException.class,
-        () -> appService.createAppAndAddRolePermission(new App(), Collections.emptySet())
-    );
+    Mockito.when(userService.findByUserId(Mockito.any())).thenReturn(null);
+    assertThrows(BadRequestException.class, () -> appService
+        .createAppAndAddRolePermission(new App(), Collections.emptySet(), OPERATOR_USER_ID));
+  }
+
+  @Test
+  void writeMethodsShouldRejectBlankOperator() {
+    assertThrows(BadRequestException.class,
+        () -> appService.createAppInRemote(Env.DEV, new App(), " "));
+    assertThrows(BadRequestException.class,
+        () -> appService.createAppAndAddRolePermission(new App(), Collections.emptySet(), " "));
+    assertThrows(BadRequestException.class, () -> appService.updateAppInLocal(new App(), " "));
+    assertThrows(BadRequestException.class, () -> appService.deleteAppInLocal("appId", " "));
   }
 
   @Test
@@ -129,8 +120,7 @@ class AppServiceTest {
       UserInfo userInfo = new UserInfo();
       userInfo.setUserId(userId);
       userInfo.setEmail("xxx@xxx.com");
-      Mockito.when(userService.findByUserId(Mockito.eq(userId)))
-          .thenReturn(userInfo);
+      Mockito.when(userService.findByUserId(Mockito.eq(userId))).thenReturn(userInfo);
     }
 
     final App app = new App();
@@ -142,25 +132,19 @@ class AppServiceTest {
     createdApp.setAppId(appId);
     createdApp.setOwnerName(userId);
     {
-      Mockito.when(appRepository.save(Mockito.eq(app)))
-          .thenReturn(createdApp);
+      Mockito.when(appRepository.save(Mockito.eq(app))).thenReturn(createdApp);
     }
-    appService.createAppAndAddRolePermission(app, admins);
-    Mockito.verify(appRepository, Mockito.times(1))
-        .findByAppId(Mockito.eq(appId));
-    Mockito.verify(userService, Mockito.times(1))
-        .findByUserId(Mockito.eq(userId));
-    Mockito.verify(userInfoHolder, Mockito.times(2))
-        .getUser();
-    Mockito.verify(appRepository, Mockito.times(1))
-        .save(Mockito.eq(app));
+    appService.createAppAndAddRolePermission(app, admins, OPERATOR_USER_ID);
+    Mockito.verify(appRepository, Mockito.times(1)).findByAppId(Mockito.eq(appId));
+    Mockito.verify(userService, Mockito.times(1)).findByUserId(Mockito.eq(userId));
+    Mockito.verify(appRepository, Mockito.times(1)).save(Mockito.eq(app));
     Mockito.verify(appNamespaceService, Mockito.times(1))
-        .createDefaultAppNamespace(Mockito.eq(appId));
+        .createDefaultAppNamespace(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID));
     Mockito.verify(roleInitializationService, Mockito.times(1))
         .initAppRoles(Mockito.eq(createdApp));
 
-    Mockito.verify(rolePermissionService, Mockito.times(1))
-        .assignRoleToUsers(Mockito.any(), Mockito.eq(admins), Mockito.eq(OPERATOR_USER_ID));
+    Mockito.verify(rolePermissionService, Mockito.times(1)).assignRoleToUsers(Mockito.any(),
+        Mockito.eq(admins), Mockito.eq(OPERATOR_USER_ID));
   }
 
   @Test
@@ -169,25 +153,22 @@ class AppServiceTest {
     {
       App app = new App();
       app.setAppId(appId);
-      Mockito.when(appRepository.findByAppId(Mockito.eq(appId)))
-          .thenReturn(app);
+      Mockito.when(appRepository.findByAppId(Mockito.eq(appId))).thenReturn(app);
     }
     {
       Mockito.when(appRepository.deleteApp(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID)))
           .thenReturn(1);
     }
 
-    App deletedApp = appService.deleteAppInLocal(appId);
-    Mockito.verify(appRepository, Mockito.times(1))
-        .deleteApp(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID));
-    Mockito.verify(userInfoHolder, Mockito.times(1))
-        .getUser();
-    Mockito.verify(apolloAuditLogApi, Mockito.times(1))
-        .appendDataInfluences(Mockito.eq(Collections.singletonList(deletedApp)), Mockito.eq(App.class));
-    Mockito.verify(appNamespaceService, Mockito.times(1))
-        .batchDeleteByAppId(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID));
-    Mockito.verify(favoriteService, Mockito.times(1))
-        .batchDeleteByAppId(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID));
+    App deletedApp = appService.deleteAppInLocal(appId, OPERATOR_USER_ID);
+    Mockito.verify(appRepository, Mockito.times(1)).deleteApp(Mockito.eq(appId),
+        Mockito.eq(OPERATOR_USER_ID));
+    Mockito.verify(apolloAuditLogApi, Mockito.times(1)).appendDataInfluences(
+        Mockito.eq(Collections.singletonList(deletedApp)), Mockito.eq(App.class));
+    Mockito.verify(appNamespaceService, Mockito.times(1)).batchDeleteByAppId(Mockito.eq(appId),
+        Mockito.eq(OPERATOR_USER_ID));
+    Mockito.verify(favoriteService, Mockito.times(1)).batchDeleteByAppId(Mockito.eq(appId),
+        Mockito.eq(OPERATOR_USER_ID));
     Mockito.verify(rolePermissionService, Mockito.times(1))
         .deleteRolePermissionsByAppId(Mockito.eq(appId), Mockito.eq(OPERATOR_USER_ID));
 

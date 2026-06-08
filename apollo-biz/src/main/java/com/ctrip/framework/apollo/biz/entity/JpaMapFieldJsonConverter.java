@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,16 @@ import com.google.gson.Gson;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
-import javax.persistence.AttributeConverter;
-import javax.persistence.Converter;
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
 class JpaMapFieldJsonConverter implements AttributeConverter<Map<String, String>, String> {
 
   private static final Gson GSON = new Gson();
 
-  private static final TypeToken<HashMap<String, String>> TYPE_TOKEN = new TypeToken<HashMap<String, String>>() {
-  };
+  private static final TypeToken<HashMap<String, String>> TYPE_TOKEN =
+      new TypeToken<HashMap<String, String>>() {};
 
   @SuppressWarnings("unchecked")
   private static final Type TYPE = TYPE_TOKEN.getType();

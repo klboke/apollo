@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package com.ctrip.framework.apollo.audit.entity;
 
 import java.util.Date;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "`AuditLog`")
@@ -121,8 +121,7 @@ public class ApolloAuditLog extends BaseEntity {
 
     ApolloAuditLog auditLog = new ApolloAuditLog();
 
-    public Builder() {
-    }
+    public Builder() {}
 
     public Builder traceId(String val) {
       auditLog.setTraceId(val);

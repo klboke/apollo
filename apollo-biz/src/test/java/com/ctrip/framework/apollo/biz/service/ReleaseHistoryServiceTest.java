@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +33,12 @@ import java.lang.reflect.Method;
 import java.sql.SQLException;
 import org.hibernate.exception.JDBCConnectionException;
 import org.junit.Assert;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,10 +56,7 @@ import org.springframework.util.ReflectionUtils;
  * @since 2023/3/24
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(
-    classes = BizTestConfiguration.class,
-    webEnvironment = WebEnvironment.RANDOM_PORT
-)
+@SpringBootTest(classes = BizTestConfiguration.class, webEnvironment = WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
 public class ReleaseHistoryServiceTest {
 
@@ -67,6 +66,7 @@ public class ReleaseHistoryServiceTest {
   private ReleaseRepository mockReleaseRepository;
 
   private ReleaseHistory mockReleaseHistory;
+  private AutoCloseable mocks;
   private static final String APP_ID = "kl-app";
   private static final String CLUSTER_NAME = "default";
   private static final String NAMESPACE_NAME = "application";
@@ -81,6 +81,7 @@ public class ReleaseHistoryServiceTest {
 
   @Before
   public void setUp() throws Exception {
+    mocks = MockitoAnnotations.openMocks(this);
     ReflectionTestUtils.setField(releaseHistoryService, "bizConfig", bizConfig);
     mockReleaseHistory = spy(ReleaseHistory.class);
     mockReleaseHistory.setBranchName(BRANCH_NAME);
@@ -89,13 +90,23 @@ public class ReleaseHistoryServiceTest {
     mockReleaseHistory.setAppId(APP_ID);
   }
 
+  @After
+  public void tearDown() throws Exception {
+    if (mocks != null) {
+      mocks.close();
+    }
+  }
+
   @Test
-  @Sql(scripts = "/sql/release-history-test.sql", executionPhase = ExecutionPhase.BEFORE_TEST_METHOD)
+  @Sql(scripts = "/sql/release-history-test.sql",
+      executionPhase = ExecutionPhase.BEFORE_TEST_METHOD)
   @Sql(scripts = "/sql/clean.sql", executionPhase = ExecutionPhase.AFTER_TEST_METHOD)
   public void testCleanReleaseHistory() {
-    ReleaseHistoryService service = (ReleaseHistoryService) AopProxyUtils.getSingletonTarget(releaseHistoryService);
+    ReleaseHistoryService service =
+        (ReleaseHistoryService) AopProxyUtils.getSingletonTarget(releaseHistoryService);
     assert service != null;
-    Method method = ReflectionUtils.findMethod(service.getClass(), "cleanReleaseHistory", ReleaseHistory.class);
+    Method method =
+        ReflectionUtils.findMethod(service.getClass(), "cleanReleaseHistory", ReleaseHistory.class);
     assert method != null;
     ReflectionUtils.makeAccessible(method);
 
@@ -112,8 +123,8 @@ public class ReleaseHistoryServiceTest {
     Assert.assertEquals(2, releaseRepository.count());
 
     when(bizConfig.releaseHistoryRetentionSize()).thenReturn(2);
-    when(bizConfig.releaseHistoryRetentionSizeOverride()).thenReturn(
-        ImmutableMap.of("kl-app+default+application+default", 1));
+    when(bizConfig.releaseHistoryRetentionSizeOverride())
+        .thenReturn(ImmutableMap.of("kl-app+default+application+default", 1));
     ReflectionUtils.invokeMethod(method, service, mockReleaseHistory);
     Assert.assertEquals(1, releaseHistoryRepository.count());
     Assert.assertEquals(1, releaseRepository.count());
@@ -126,21 +137,25 @@ public class ReleaseHistoryServiceTest {
   }
 
   @Test
-  @Sql(scripts = "/sql/release-history-test.sql", executionPhase = ExecutionPhase.BEFORE_TEST_METHOD)
+  @Sql(scripts = "/sql/release-history-test.sql",
+      executionPhase = ExecutionPhase.BEFORE_TEST_METHOD)
   @Sql(scripts = "/sql/clean.sql", executionPhase = ExecutionPhase.AFTER_TEST_METHOD)
   public void testCleanReleaseHistoryTransactionalRollBack() {
-    ReleaseHistoryService service = (ReleaseHistoryService) AopProxyUtils.getSingletonTarget(releaseHistoryService);
+    ReleaseHistoryService service =
+        (ReleaseHistoryService) AopProxyUtils.getSingletonTarget(releaseHistoryService);
     assert service != null;
-    Method method = ReflectionUtils.findMethod(service.getClass(), "cleanReleaseHistory", ReleaseHistory.class);
+    Method method =
+        ReflectionUtils.findMethod(service.getClass(), "cleanReleaseHistory", ReleaseHistory.class);
     assert method != null;
     ReflectionUtils.makeAccessible(method);
 
     when(bizConfig.releaseHistoryRetentionSize()).thenReturn(1);
     when(bizConfig.releaseHistoryRetentionSizeOverride()).thenReturn(Maps.newHashMap());
     ReflectionTestUtils.setField(releaseHistoryService, "releaseRepository", mockReleaseRepository);
-    doThrow(new JDBCConnectionException("error", new SQLException("sql"))).when(mockReleaseRepository).deleteAllById(any());
-    Assert.assertThrows(JDBCConnectionException.class, () ->
-        ReflectionUtils.invokeMethod(method, service, mockReleaseHistory));
+    doThrow(new JDBCConnectionException("error", new SQLException("sql")))
+        .when(mockReleaseRepository).deleteAllById(any());
+    Assert.assertThrows(JDBCConnectionException.class,
+        () -> ReflectionUtils.invokeMethod(method, service, mockReleaseHistory));
 
     Assert.assertEquals(6, releaseHistoryRepository.count());
 

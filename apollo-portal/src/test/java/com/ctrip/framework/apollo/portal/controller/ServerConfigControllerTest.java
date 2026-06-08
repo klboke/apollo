@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
 package com.ctrip.framework.apollo.portal.controller;
 
 import com.ctrip.framework.apollo.portal.AbstractIntegrationTest;
+import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
 import com.ctrip.framework.apollo.portal.entity.po.ServerConfig;
 import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.service.ServerConfigService;
+import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
+import org.junit.Before;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InjectMocks;
@@ -34,6 +37,11 @@ import java.util.*;
 import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -45,9 +53,16 @@ import static org.mockito.Mockito.when;
 public class ServerConfigControllerTest extends AbstractIntegrationTest {
   @Mock
   private ServerConfigService serverConfigService;
+  @Mock
+  private UserInfoHolder userInfoHolder;
 
   @InjectMocks
   private ServerConfigController serverConfigController;
+
+  @Before
+  public void setUp() {
+    when(userInfoHolder.getUser()).thenReturn(new UserInfo("apollo"));
+  }
 
   @Test
   @Sql(scripts = "/sql/cleanup.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD)
@@ -55,9 +70,8 @@ public class ServerConfigControllerTest extends AbstractIntegrationTest {
     ServerConfig serverConfig = new ServerConfig();
     serverConfig.setKey("validKey");
     serverConfig.setValue("validValue");
-    ResponseEntity<ServerConfig> responseEntity = restTemplate.postForEntity(
-        url("/server/portal-db/config"), serverConfig, ServerConfig.class
-    );
+    ResponseEntity<ServerConfig> responseEntity = restTemplate
+        .postForEntity(url("/server/portal-db/config"), serverConfig, ServerConfig.class);
     assertEquals(responseEntity.getBody().getKey(), serverConfig.getKey());
     assertEquals(responseEntity.getBody().getValue(), serverConfig.getValue());
   }
@@ -68,28 +82,20 @@ public class ServerConfigControllerTest extends AbstractIntegrationTest {
     serverConfig.setKey("  ");
     serverConfig.setValue("valid");
     try {
-      restTemplate.postForEntity(
-          url("/server/portal-db/config"), serverConfig, ServerConfig.class
-      );
+      restTemplate.postForEntity(url("/server/portal-db/config"), serverConfig, ServerConfig.class);
       Assert.fail("Should throw");
     } catch (final HttpClientErrorException e) {
-      assertThat(
-          new String(e.getResponseBodyAsByteArray()),
-          containsString("ServerConfig.Key cannot be blank")
-      );
+      assertThat(new String(e.getResponseBodyAsByteArray()),
+          containsString("ServerConfig.Key cannot be blank"));
     }
     serverConfig.setKey("valid");
     serverConfig.setValue("   ");
     try {
-      restTemplate.postForEntity(
-          url("/server/portal-db/config"), serverConfig, ServerConfig.class
-      );
+      restTemplate.postForEntity(url("/server/portal-db/config"), serverConfig, ServerConfig.class);
       Assert.fail("Should throw");
     } catch (final HttpClientErrorException e) {
-      assertThat(
-          new String(e.getResponseBodyAsByteArray()),
-          containsString("ServerConfig.Value cannot be blank")
-      );
+      assertThat(new String(e.getResponseBodyAsByteArray()),
+          containsString("ServerConfig.Value cannot be blank"));
     }
   }
 
@@ -107,4 +113,118 @@ public class ServerConfigControllerTest extends AbstractIntegrationTest {
     Assert.assertEquals(0, serverConfigList.size());
 
   }
+
+  @Test
+  public void deletePortalDBConfig() {
+    serverConfigController.deletePortalDBConfig("timeout");
+
+    verify(serverConfigService).deletePortalDBConfig("timeout", "apollo");
+  }
+
+  @Test
+  public void createConfigDBConfigShouldPassKeyAndClusterForNewClusterWhenSameKeyExists() {
+    String key = "timeout";
+    ServerConfig serverConfig = new ServerConfig();
+    serverConfig.setKey(key);
+    serverConfig.setCluster("SHAJQ");
+    serverConfig.setValue("clusterValue");
+
+    when(serverConfigService.createOrUpdateConfigDBConfig(Env.DEV, serverConfig, "apollo"))
+        .thenReturn(serverConfig);
+
+    ServerConfig result =
+        serverConfigController.createOrUpdateConfigDBConfig(serverConfig, Env.DEV.getName());
+
+    Assert.assertNotNull(result);
+    Assert.assertEquals(key, result.getKey());
+    Assert.assertEquals("SHAJQ", result.getCluster());
+    verify(serverConfigService).createOrUpdateConfigDBConfig(Env.DEV, serverConfig, "apollo");
+    verify(serverConfigService, never()).createOrUpdateConfigDBConfig(eq(Env.DEV),
+        argThat(config -> key.equals(config.getKey()) && "default".equals(config.getCluster())),
+        eq("apollo"));
+  }
+
+  @Test
+  public void updateConfigDBConfigShouldPassTargetKeyAndClusterWhenSameKeyExists() {
+    String key = "timeout";
+    ServerConfig serverConfig = new ServerConfig();
+    serverConfig.setKey(key);
+    serverConfig.setCluster("SHAJQ");
+    serverConfig.setValue("clusterValueUpdated");
+
+    when(serverConfigService.createOrUpdateConfigDBConfig(Env.DEV, serverConfig, "apollo"))
+        .thenReturn(serverConfig);
+
+    ServerConfig result =
+        serverConfigController.createOrUpdateConfigDBConfig(serverConfig, Env.DEV.getName());
+
+    Assert.assertNotNull(result);
+    Assert.assertEquals(key, result.getKey());
+    Assert.assertEquals("SHAJQ", result.getCluster());
+    Assert.assertEquals("clusterValueUpdated", result.getValue());
+    verify(serverConfigService).createOrUpdateConfigDBConfig(Env.DEV, serverConfig, "apollo");
+    verify(serverConfigService, never()).createOrUpdateConfigDBConfig(eq(Env.DEV),
+        argThat(config -> key.equals(config.getKey()) && "default".equals(config.getCluster())),
+        eq("apollo"));
+  }
+
+  @Test
+  public void deleteConfigDBConfig() {
+    serverConfigController.deleteConfigDBConfig(Env.DEV.getName(), "timeout", "default");
+
+    verify(serverConfigService).deleteConfigDBConfig(Env.DEV, "timeout", "default", "apollo");
+  }
+
+  @Test
+  public void deleteConfigDBConfigShouldTargetSpecifiedClusterWhenSameKeyExists() {
+    String key = "timeout";
+
+    serverConfigController.deleteConfigDBConfig(Env.DEV.getName(), key, "SHAJQ");
+
+    verify(serverConfigService).deleteConfigDBConfig(Env.DEV, key, "SHAJQ", "apollo");
+    verify(serverConfigService, never()).deleteConfigDBConfig(Env.DEV, key, "default", "apollo");
+  }
+
+  @Test
+  public void createUpdateDeleteConfigDBConfigShouldRespectKeyAndClusterIdentity() {
+    String key = "timeout";
+    ServerConfig defaultConfig = new ServerConfig();
+    defaultConfig.setKey(key);
+    defaultConfig.setCluster("default");
+    defaultConfig.setValue("defaultValue");
+
+    ServerConfig shajqConfig = new ServerConfig();
+    shajqConfig.setKey(key);
+    shajqConfig.setCluster("SHAJQ");
+    shajqConfig.setValue("clusterValue");
+
+    ServerConfig shajqConfigUpdated = new ServerConfig();
+    shajqConfigUpdated.setKey(key);
+    shajqConfigUpdated.setCluster("SHAJQ");
+    shajqConfigUpdated.setValue("clusterValueUpdated");
+
+    when(serverConfigService.createOrUpdateConfigDBConfig(Env.DEV, defaultConfig, "apollo"))
+        .thenReturn(defaultConfig);
+    when(serverConfigService.createOrUpdateConfigDBConfig(Env.DEV, shajqConfig, "apollo"))
+        .thenReturn(shajqConfig);
+    when(serverConfigService.createOrUpdateConfigDBConfig(Env.DEV, shajqConfigUpdated, "apollo"))
+        .thenReturn(shajqConfigUpdated);
+
+    serverConfigController.createOrUpdateConfigDBConfig(defaultConfig, Env.DEV.getName());
+    serverConfigController.createOrUpdateConfigDBConfig(shajqConfig, Env.DEV.getName());
+    serverConfigController.createOrUpdateConfigDBConfig(shajqConfigUpdated, Env.DEV.getName());
+    serverConfigController.deleteConfigDBConfig(Env.DEV.getName(), key, "SHAJQ");
+
+    verify(serverConfigService, times(1)).createOrUpdateConfigDBConfig(eq(Env.DEV),
+        argThat(config -> config != null && key.equals(config.getKey())
+            && "default".equals(config.getCluster())),
+        eq("apollo"));
+    verify(serverConfigService, times(2)).createOrUpdateConfigDBConfig(eq(Env.DEV),
+        argThat(config -> config != null && key.equals(config.getKey())
+            && "SHAJQ".equals(config.getCluster())),
+        eq("apollo"));
+    verify(serverConfigService).deleteConfigDBConfig(Env.DEV, key, "SHAJQ", "apollo");
+    verify(serverConfigService, never()).deleteConfigDBConfig(Env.DEV, key, "default", "apollo");
+  }
+
 }

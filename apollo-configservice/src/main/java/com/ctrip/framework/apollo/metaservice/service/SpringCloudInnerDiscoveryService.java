@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,38 +28,38 @@ import java.util.List;
 
 /**
  * @author : kl
- * Service discovery consul implementation
+ * Service discovery implementation backed by Spring Cloud DiscoveryClient
  **/
 @Service
-@Profile({"consul-discovery", "zookeeper-discovery"})
+@Profile({"consul-discovery", "zookeeper-discovery", "nacos-discovery"})
 public class SpringCloudInnerDiscoveryService implements DiscoveryService {
 
-    private final DiscoveryClient discoveryClient;
+  private final DiscoveryClient discoveryClient;
 
-    public SpringCloudInnerDiscoveryService(DiscoveryClient discoveryClient) {
-        this.discoveryClient = discoveryClient;
+  public SpringCloudInnerDiscoveryService(DiscoveryClient discoveryClient) {
+    this.discoveryClient = discoveryClient;
+  }
+
+
+  @Override
+  public List<ServiceDTO> getServiceInstances(String serviceId) {
+    List<ServiceInstance> instances = discoveryClient.getInstances(serviceId);
+    List<ServiceDTO> serviceDTOList = Lists.newLinkedList();
+    if (!CollectionUtils.isEmpty(instances)) {
+      instances.forEach(instance -> {
+        ServiceDTO serviceDTO = this.toServiceDTO(instance, serviceId);
+        serviceDTOList.add(serviceDTO);
+      });
     }
+    return serviceDTOList;
+  }
 
-
-    @Override
-    public List<ServiceDTO> getServiceInstances(String serviceId) {
-        List<ServiceInstance> instances = discoveryClient.getInstances(serviceId);
-        List<ServiceDTO> serviceDTOList = Lists.newLinkedList();
-        if (!CollectionUtils.isEmpty(instances)) {
-            instances.forEach(instance -> {
-                ServiceDTO serviceDTO = this.toServiceDTO(instance, serviceId);
-                serviceDTOList.add(serviceDTO);
-            });
-        }
-        return serviceDTOList;
-    }
-
-    private ServiceDTO toServiceDTO(ServiceInstance instance, String appName) {
-        ServiceDTO service = new ServiceDTO();
-        service.setAppName(appName);
-        service.setInstanceId(instance.getInstanceId());
-        String homePageUrl = "http://" + instance.getHost() + ":" + instance.getPort() + "/";
-        service.setHomepageUrl(homePageUrl);
-        return service;
-    }
+  private ServiceDTO toServiceDTO(ServiceInstance instance, String appName) {
+    ServiceDTO service = new ServiceDTO();
+    service.setAppName(appName);
+    service.setInstanceId(instance.getInstanceId());
+    String homePageUrl = "http://" + instance.getHost() + ":" + instance.getPort() + "/";
+    service.setHomepageUrl(homePageUrl);
+    return service;
+  }
 }

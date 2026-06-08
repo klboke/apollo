@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,69 +16,126 @@
  */
 package com.ctrip.framework.apollo.openapi.v1.controller;
 
-import com.ctrip.framework.apollo.openapi.api.ClusterOpenApiService;
-import com.ctrip.framework.apollo.portal.spi.UserService;
-import java.util.Objects;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.ctrip.framework.apollo.audit.annotation.ApolloAuditLog;
+import com.ctrip.framework.apollo.audit.annotation.OpType;
 import com.ctrip.framework.apollo.common.exception.BadRequestException;
 import com.ctrip.framework.apollo.common.utils.InputValidator;
 import com.ctrip.framework.apollo.common.utils.RequestPrecondition;
 import com.ctrip.framework.apollo.core.utils.StringUtils;
-import com.ctrip.framework.apollo.openapi.dto.OpenClusterDTO;
+import com.ctrip.framework.apollo.openapi.api.ClusterManagementApi;
+import com.ctrip.framework.apollo.openapi.model.OpenClusterDTO;
+import com.ctrip.framework.apollo.openapi.server.service.ClusterOpenApiService;
+import com.ctrip.framework.apollo.portal.component.UnifiedPermissionValidator;
+import com.ctrip.framework.apollo.portal.component.UserIdentityContextHolder;
+import com.ctrip.framework.apollo.portal.constant.UserIdentityConstants;
+import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
+import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
+import com.ctrip.framework.apollo.portal.spi.UserService;
+import java.util.Objects;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController("openapiClusterController")
-@RequestMapping("/openapi/v1/envs/{env}")
-public class ClusterController {
+public class ClusterController implements ClusterManagementApi {
 
   private final UserService userService;
   private final ClusterOpenApiService clusterOpenApiService;
+  private final UserInfoHolder userInfoHolder;
+  private final UnifiedPermissionValidator unifiedPermissionValidator;
 
-  public ClusterController(
-      UserService userService,
-      ClusterOpenApiService clusterOpenApiService) {
+  public ClusterController(UserService userService, ClusterOpenApiService clusterOpenApiService,
+      UserInfoHolder userInfoHolder, UnifiedPermissionValidator unifiedPermissionValidator) {
     this.userService = userService;
     this.clusterOpenApiService = clusterOpenApiService;
+    this.userInfoHolder = userInfoHolder;
+    this.unifiedPermissionValidator = unifiedPermissionValidator;
   }
 
-  @GetMapping(value = "apps/{appId}/clusters/{clusterName:.+}")
-  public OpenClusterDTO getCluster(@PathVariable("appId") String appId, @PathVariable String env,
-      @PathVariable("clusterName") String clusterName) {
-    return this.clusterOpenApiService.getCluster(appId, env, clusterName);
+  @Override
+  public ResponseEntity<OpenClusterDTO> getCluster(String appId, String clusterName, String env) {
+    return ResponseEntity.ok(this.clusterOpenApiService.getCluster(appId, env, clusterName));
   }
 
-  @PreAuthorize(value = "@consumerPermissionValidator.hasCreateClusterPermission(#request, #appId)")
-  @PostMapping(value = "apps/{appId}/clusters")
-  public OpenClusterDTO createCluster(@PathVariable String appId, @PathVariable String env,
-      @Valid @RequestBody OpenClusterDTO cluster, HttpServletRequest request) {
+  @PreAuthorize(value = "@unifiedPermissionValidator.hasCreateClusterPermission(#appId)")
+  @ApolloAuditLog(type = OpType.CREATE, name = "Cluster.create")
+  @Override
+  public ResponseEntity<OpenClusterDTO> createCluster(String appId, String env,
+      OpenClusterDTO cluster) {
 
     if (!Objects.equals(appId, cluster.getAppId())) {
-      throw new BadRequestException(
-          "AppId not equal. AppId in path = %s, AppId in payload = %s", appId, cluster.getAppId());
+      throw new BadRequestException("AppId not equal. AppId in path = %s, AppId in payload = %s",
+          appId, cluster.getAppId());
     }
 
     String clusterName = cluster.getName();
-    String operator = cluster.getDataChangeCreatedBy();
+    String operator = resolveOperator(cluster.getDataChangeCreatedBy());
+    cluster.setDataChangeLastModifiedBy(operator);
+    cluster.setDataChangeCreatedBy(operator);
 
     RequestPrecondition.checkArguments(!StringUtils.isContainEmpty(clusterName, operator),
         "name and dataChangeCreatedBy should not be null or empty");
 
     if (!InputValidator.isValidClusterNamespace(clusterName)) {
-      throw BadRequestException.invalidClusterNameFormat(InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE);
+      throw BadRequestException
+          .invalidClusterNameFormat(InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE);
     }
+
+    return ResponseEntity.ok(this.clusterOpenApiService.createCluster(env, cluster, operator));
+  }
+
+  /**
+   * Delete Clusters
+   */
+  @ApolloAuditLog(type = OpType.DELETE, name = "Cluster.delete")
+  @Override
+  public ResponseEntity<Void> deleteCluster(String env, String appId, String clusterName,
+      String operator) {
+    requireDeleteClusterPermission(appId);
+    String resolvedOperator = resolveOperator(operator);
+
+    clusterOpenApiService.deleteCluster(env, appId, clusterName, resolvedOperator);
+    return ResponseEntity.ok().build();
+  }
+
+  private void requireDeleteClusterPermission(String appId) {
+    String authType = UserIdentityContextHolder.getAuthType();
+    if (UserIdentityConstants.USER.equals(authType)) {
+      // Keep Portal UI behavior aligned with the legacy WebAPI delete path, which required
+      // super-admin permission for cluster deletion.
+      if (unifiedPermissionValidator.isSuperAdmin()) {
+        return;
+      }
+      throw new AccessDeniedException("Super admin permission is required");
+    }
+    if (UserIdentityConstants.CONSUMER.equals(authType)) {
+      // Existing OpenAPI consumers use app-scoped authorization here. Preserve that public
+      // token boundary while keeping the Portal USER path compatible with the legacy WebAPI.
+      if (unifiedPermissionValidator.isAppAdmin(appId)) {
+        return;
+      }
+      throw new AccessDeniedException("App admin permission is required");
+    }
+    throw new AccessDeniedException("Access is denied");
+  }
+
+  private String resolveOperator(String operator) {
+    if (UserIdentityConstants.USER.equals(UserIdentityContextHolder.getAuthType())) {
+      UserInfo loginUser = userInfoHolder.getUser();
+      if (loginUser == null || StringUtils.isBlank(loginUser.getUserId())) {
+        throw new BadRequestException("Current user not found");
+      }
+      return loginUser.getUserId();
+    }
+
+    RequestPrecondition.checkArguments(!StringUtils.isContainEmpty(operator),
+        "operator should not be null or empty");
 
     if (userService.findByUserId(operator) == null) {
       throw BadRequestException.userNotExists(operator);
     }
-
-    return this.clusterOpenApiService.createCluster(env, cluster);
+    return operator;
   }
 
 }

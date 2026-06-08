@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,19 +19,20 @@ package com.ctrip.framework.apollo.common.entity;
 import com.ctrip.framework.apollo.audit.annotation.ApolloAuditLogDataInfluenceTable;
 import com.ctrip.framework.apollo.audit.annotation.ApolloAuditLogDataInfluenceTableField;
 import com.ctrip.framework.apollo.common.utils.InputValidator;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Pattern;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "`App`")
-@SQLDelete(sql = "Update App set IsDeleted = true, DeletedAt = ROUND(UNIX_TIMESTAMP(NOW(4))*1000) where Id = ?")
-@Where(clause = "`IsDeleted` = false")
+@SQLDelete(
+    sql = "Update `App` set IsDeleted = true, DeletedAt = ROUND(UNIX_TIMESTAMP(NOW(4))*1000) where Id = ?")
+@SQLRestriction("`IsDeleted` = false")
 @ApolloAuditLogDataInfluenceTable(tableName = "App")
 public class App extends BaseEntity {
 
@@ -41,10 +42,8 @@ public class App extends BaseEntity {
   private String name;
 
   @NotBlank(message = "AppId cannot be blank")
-  @Pattern(
-      regexp = InputValidator.CLUSTER_NAMESPACE_VALIDATOR,
-      message = InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE
-  )
+  @Pattern(regexp = InputValidator.CLUSTER_NAMESPACE_VALIDATOR,
+      message = InputValidator.INVALID_CLUSTER_NAMESPACE_MESSAGE)
   @Column(name = "`AppId`", nullable = false)
   @ApolloAuditLogDataInfluenceTableField(fieldName = "AppId")
   private String appId;
@@ -111,18 +110,16 @@ public class App extends BaseEntity {
     this.ownerName = ownerName;
   }
 
+  @Override
   public String toString() {
-    return toStringHelper().add("name", name).add("appId", appId)
-        .add("orgId", orgId)
-        .add("orgName", orgName)
-        .add("ownerName", ownerName)
-        .add("ownerEmail", ownerEmail).toString();
+    return toStringHelper().add("name", name).add("appId", appId).add("orgId", orgId)
+        .add("orgName", orgName).add("ownerName", ownerName).add("ownerEmail", ownerEmail)
+        .toString();
   }
 
   public static class Builder {
 
-    public Builder() {
-    }
+    public Builder() {}
 
     private App app = new App();
 

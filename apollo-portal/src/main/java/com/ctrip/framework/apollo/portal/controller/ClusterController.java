@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,42 +31,50 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 
+/**
+ * @deprecated Portal UI uses /openapi/v1 endpoints. This legacy WebAPI controller is kept for
+ *     compatibility.
+ */
+@Deprecated
 @RestController
 public class ClusterController {
 
   private final ClusterService clusterService;
   private final UserInfoHolder userInfoHolder;
 
-  public ClusterController(final ClusterService clusterService, final UserInfoHolder userInfoHolder) {
+  public ClusterController(final ClusterService clusterService,
+      final UserInfoHolder userInfoHolder) {
     this.clusterService = clusterService;
     this.userInfoHolder = userInfoHolder;
   }
 
-  @PreAuthorize(value = "@permissionValidator.hasCreateClusterPermission(#appId)")
+  @PreAuthorize(value = "@unifiedPermissionValidator.hasCreateClusterPermission(#appId)")
   @PostMapping(value = "apps/{appId}/envs/{env}/clusters")
   @ApolloAuditLog(type = OpType.CREATE, name = "Cluster.create")
   public ClusterDTO createCluster(@PathVariable String appId, @PathVariable String env,
-                                  @Valid @RequestBody ClusterDTO cluster) {
+      @Valid @RequestBody ClusterDTO cluster) {
     String operator = userInfoHolder.getUser().getUserId();
     cluster.setDataChangeLastModifiedBy(operator);
     cluster.setDataChangeCreatedBy(operator);
 
-    return clusterService.createCluster(Env.valueOf(env), cluster);
+    return clusterService.createCluster(Env.valueOf(env), cluster, operator);
   }
 
-  @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
+  @PreAuthorize(value = "@unifiedPermissionValidator.isSuperAdmin()")
   @DeleteMapping(value = "apps/{appId}/envs/{env}/clusters/{clusterName:.+}")
   @ApolloAuditLog(type = OpType.DELETE, name = "Cluster.delete")
   public ResponseEntity<Void> deleteCluster(@PathVariable String appId, @PathVariable String env,
-                                            @PathVariable String clusterName){
-    clusterService.deleteCluster(Env.valueOf(env), appId, clusterName);
+      @PathVariable String clusterName) {
+    clusterService.deleteCluster(Env.valueOf(env), appId, clusterName,
+        userInfoHolder.getUser().getUserId());
     return ResponseEntity.ok().build();
   }
 
   @GetMapping(value = "apps/{appId}/envs/{env}/clusters/{clusterName:.+}")
-  public ClusterDTO loadCluster(@PathVariable("appId") String appId, @PathVariable String env, @PathVariable("clusterName") String clusterName) {
+  public ClusterDTO loadCluster(@PathVariable("appId") String appId, @PathVariable String env,
+      @PathVariable("clusterName") String clusterName) {
 
     return clusterService.loadCluster(appId, Env.valueOf(env), clusterName);
   }

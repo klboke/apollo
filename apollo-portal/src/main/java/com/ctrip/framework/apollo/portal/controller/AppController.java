@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import com.ctrip.framework.apollo.common.utils.BeanUtils;
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.portal.component.PortalSettings;
 import com.ctrip.framework.apollo.portal.enricher.adapter.AppDtoUserInfoEnrichedAdapter;
+import com.ctrip.framework.apollo.portal.entity.bo.UserInfo;
 import com.ctrip.framework.apollo.portal.entity.model.AppModel;
 import com.ctrip.framework.apollo.portal.entity.po.Role;
 import com.ctrip.framework.apollo.portal.entity.vo.EnvClusterInfo;
@@ -58,13 +59,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpClientErrorException;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 
+/**
+ * @deprecated Portal UI uses /openapi/v1 endpoints. This legacy WebAPI controller is kept for
+ *     compatibility.
+ */
+@Deprecated
 @RestController
 @RequestMapping("/apps")
 public class AppController {
@@ -77,11 +83,8 @@ public class AppController {
   private final RoleInitializationService roleInitializationService;
   private final AdditionalUserInfoEnrichService additionalUserInfoEnrichService;
 
-  public AppController(
-      final UserInfoHolder userInfoHolder,
-      final AppService appService,
-      final PortalSettings portalSettings,
-      final ApplicationEventPublisher publisher,
+  public AppController(final UserInfoHolder userInfoHolder, final AppService appService,
+      final PortalSettings portalSettings, final ApplicationEventPublisher publisher,
       final RolePermissionService rolePermissionService,
       final RoleInitializationService roleInitializationService,
       final AdditionalUserInfoEnrichService additionalUserInfoEnrichService) {
@@ -102,11 +105,14 @@ public class AppController {
     return appService.findByAppIds(Sets.newHashSet(appIds.split(",")));
   }
 
-  @GetMapping("/by-owner")
-  public List<App> findAppsByOwner(@RequestParam("owner") String owner, Pageable page) {
+  @GetMapping("/by-self")
+  public List<App> findAppsBySelf(Pageable page) {
+    UserInfo loginUser = userInfoHolder.getUser();
+    String userId = loginUser.getUserId();
+
     Set<String> appIds = Sets.newHashSet();
 
-    List<Role> userRoles = rolePermissionService.findUserRoles(owner);
+    List<Role> userRoles = rolePermissionService.findUserRoles(userId);
 
     for (Role role : userRoles) {
       String appId = RoleUtils.extractAppIdFromRoleName(role.getRoleName());
@@ -119,16 +125,17 @@ public class AppController {
     return appService.findByAppIds(appIds, page);
   }
 
-  @PreAuthorize(value = "@permissionValidator.hasCreateApplicationPermission()")
+  @PreAuthorize(value = "@unifiedPermissionValidator.hasCreateApplicationPermission()")
   @PostMapping
   @ApolloAuditLog(type = OpType.CREATE, name = "App.create")
   public App create(@Valid @RequestBody AppModel appModel) {
 
     App app = transformToApp(appModel);
-    return appService.createAppAndAddRolePermission(app, appModel.getAdmins());
+    return appService.createAppAndAddRolePermission(app, appModel.getAdmins(),
+        userInfoHolder.getUser().getUserId());
   }
 
-  @PreAuthorize(value = "@permissionValidator.isAppAdmin(#appId)")
+  @PreAuthorize(value = "@unifiedPermissionValidator.isAppAdmin(#appId)")
   @PutMapping("/{appId:.+}")
   @ApolloAuditLog(type = OpType.UPDATE, name = "App.update")
   public void update(@PathVariable String appId, @Valid @RequestBody AppModel appModel) {
@@ -138,7 +145,7 @@ public class AppController {
 
     App app = transformToApp(appModel);
 
-    App updatedApp = appService.updateAppInLocal(app);
+    App updatedApp = appService.updateAppInLocal(app, userInfoHolder.getUser().getUserId());
 
     publisher.publishEvent(new AppInfoChangedEvent(updatedApp));
   }
@@ -153,8 +160,7 @@ public class AppController {
         response.addResponseEntity(RichResponseEntity.ok(appService.createEnvNavNode(env, appId)));
       } catch (Exception e) {
         response.addResponseEntity(RichResponseEntity.error(HttpStatus.INTERNAL_SERVER_ERROR,
-            "load env:" + env.getName() + " cluster error." + e
-                .getMessage()));
+            "load env:" + env.getName() + " cluster error." + e.getMessage()));
       }
     }
     return response;
@@ -163,10 +169,11 @@ public class AppController {
   @PostMapping(value = "/envs/{env}", consumes = {"application/json"})
   @ApolloAuditLog(type = OpType.CREATE, name = "App.create.forEnv")
   public ResponseEntity<Void> create(@PathVariable String env, @Valid @RequestBody App app) {
-    appService.createAppInRemote(Env.valueOf(env), app);
+    String operator = userInfoHolder.getUser().getUserId();
+    appService.createAppInRemote(Env.valueOf(env), app, operator);
 
-    roleInitializationService.initNamespaceSpecificEnvRoles(app.getAppId(), ConfigConsts.NAMESPACE_APPLICATION,
-            env, userInfoHolder.getUser().getUserId());
+    roleInitializationService.initNamespaceSpecificEnvRoles(app.getAppId(),
+        ConfigConsts.NAMESPACE_APPLICATION, env, operator);
 
     return ResponseEntity.ok().build();
   }
@@ -181,11 +188,11 @@ public class AppController {
   }
 
 
-  @PreAuthorize(value = "@permissionValidator.isSuperAdmin()")
+  @PreAuthorize(value = "@unifiedPermissionValidator.isSuperAdmin()")
   @DeleteMapping("/{appId:.+}")
   @ApolloAuditLog(type = OpType.RPC, name = "App.delete")
   public void deleteApp(@PathVariable String appId) {
-    App app = appService.deleteAppInLocal(appId);
+    App app = appService.deleteAppInLocal(appId, userInfoHolder.getUser().getUserId());
 
     publisher.publishEvent(new AppDeletionEvent(app));
   }
@@ -198,14 +205,12 @@ public class AppController {
       try {
         appService.load(env, appId);
       } catch (Exception e) {
-        if (e instanceof HttpClientErrorException &&
-            ((HttpClientErrorException) e).getStatusCode() == HttpStatus.NOT_FOUND) {
+        if (e instanceof HttpClientErrorException
+            && ((HttpClientErrorException) e).getStatusCode() == HttpStatus.NOT_FOUND) {
           response.addResponseEntity(RichResponseEntity.ok(env.toString()));
         } else {
           response.addResponseEntity(RichResponseEntity.error(HttpStatus.INTERNAL_SERVER_ERROR,
-              String.format("load appId:%s from env %s error.", appId,
-                  env)
-                  + e.getMessage()));
+              String.format("load appId:%s from env %s error.", appId, env) + e.getMessage()));
         }
       }
     }
@@ -220,13 +225,8 @@ public class AppController {
     String orgId = appModel.getOrgId();
     String orgName = appModel.getOrgName();
 
-    return App.builder()
-        .appId(appId)
-        .name(appName)
-        .ownerName(ownerName)
-        .orgId(orgId)
-        .orgName(orgName)
-        .build();
+    return App.builder().appId(appId).name(appName).ownerName(ownerName).orgId(orgId)
+        .orgName(orgName).build();
 
   }
 }

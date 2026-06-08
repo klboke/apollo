@@ -74,14 +74,17 @@ function showTextModalDirective(AppUtil) {
         transclude: true,
         replace: true,
         scope: {
-            text: '='
+            text: '=',
+            oldStr: '=',
+            newStr: '=',
+            enableTextDiff: '='
         },
         link: function (scope) {
             scope.$watch('text', init);
 
             function init() {
                 scope.jsonObject = undefined;
-                if (isJsonText(scope.text)) {
+                if (isJsonText(scope.text) && !AppUtil.hasDuplicateKeys(scope.text)) {
                     scope.jsonObject = parseBigInt(scope.text);
                 }
             }

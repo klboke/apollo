@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 package com.ctrip.framework.apollo.portal.service;
 
 
+import com.ctrip.framework.apollo.common.exception.NotFoundException;
 import com.ctrip.framework.apollo.common.utils.BeanUtils;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI;
 import com.ctrip.framework.apollo.portal.api.AdminServiceAPI.ServerConfigAPI;
 import com.ctrip.framework.apollo.portal.entity.po.ServerConfig;
 import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.repository.ServerConfigRepository;
-import com.ctrip.framework.apollo.portal.spi.UserInfoHolder;
 import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Objects;
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -36,46 +36,60 @@ public class ServerConfigService {
   private final ServerConfigRepository serverConfigRepository;
 
   private final AdminServiceAPI.ServerConfigAPI serverConfigAPI;
-  private final UserInfoHolder userInfoHolder;
 
   public ServerConfigService(final ServerConfigRepository serverConfigRepository,
-      ServerConfigAPI serverConfigAPI, UserInfoHolder userInfoHolder) {
+      ServerConfigAPI serverConfigAPI) {
     this.serverConfigRepository = serverConfigRepository;
     this.serverConfigAPI = serverConfigAPI;
-    this.userInfoHolder = userInfoHolder;
   }
 
   public List<ServerConfig> findAllPortalDBConfig() {
     Iterable<ServerConfig> serverConfigs = serverConfigRepository.findAll();
     return Lists.newArrayList(serverConfigs);
   }
+
   public List<ServerConfig> findAllConfigDBConfig(Env env) {
     return serverConfigAPI.findAllConfigDBConfig(env);
   }
 
   @Transactional
-  public ServerConfig createOrUpdatePortalDBConfig(ServerConfig serverConfig) {
-    String modifiedBy = userInfoHolder.getUser().getUserId();
-
+  public ServerConfig createOrUpdatePortalDBConfig(ServerConfig serverConfig, String modifiedBy) {
     ServerConfig storedConfig = serverConfigRepository.findByKey(serverConfig.getKey());
 
-    if (Objects.isNull(storedConfig)) {//create
+    if (Objects.isNull(storedConfig)) {// create
       serverConfig.setDataChangeCreatedBy(modifiedBy);
       serverConfig.setDataChangeLastModifiedBy(modifiedBy);
-      serverConfig.setId(0L);//为空，设置ID 为0，jpa执行新增操作
+      serverConfig.setId(0L);// 为空，设置ID 为0，jpa执行新增操作
       return serverConfigRepository.save(serverConfig);
     }
-    //update
+    // update
     BeanUtils.copyEntityProperties(serverConfig, storedConfig);
     storedConfig.setDataChangeLastModifiedBy(modifiedBy);
     return serverConfigRepository.save(storedConfig);
   }
 
   @Transactional
-  public ServerConfig createOrUpdateConfigDBConfig(Env env, ServerConfig serverConfig) {
-    String modifiedBy = userInfoHolder.getUser().getUserId();
+  public ServerConfig createOrUpdateConfigDBConfig(Env env, ServerConfig serverConfig,
+      String modifiedBy) {
     serverConfig.setDataChangeCreatedBy(modifiedBy);
     serverConfig.setDataChangeLastModifiedBy(modifiedBy);
     return serverConfigAPI.createOrUpdateConfigDBConfig(env, serverConfig);
+  }
+
+  @Transactional
+  public void deletePortalDBConfig(String key, String modifiedBy) {
+    ServerConfig storedConfig = serverConfigRepository.findByKey(key);
+
+    if (Objects.isNull(storedConfig)) {
+      throw new NotFoundException("server config not found for key:%s", key);
+    }
+
+    storedConfig.setDeleted(true);
+    storedConfig.setDataChangeLastModifiedBy(modifiedBy);
+    serverConfigRepository.save(storedConfig);
+  }
+
+  public void deleteConfigDBConfig(Env env, String key, String cluster, String modifiedBy) {
+    serverConfigAPI.deleteConfigDBConfig(env, key, cluster, modifiedBy);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -43,7 +43,7 @@ public class ApolloAuditTracer {
     this.operatorSupplier = operatorSupplier;
   }
 
-  public ApolloAuditScopeManager scopeManager() {
+  protected ApolloAuditScopeManager scopeManager() {
     return manager;
   }
 
@@ -54,8 +54,7 @@ public class ApolloAuditTracer {
     }
     map.put(ApolloAuditConstants.TRACE_ID,
         Collections.singletonList(manager.activeSpan().traceId()));
-    map.put(ApolloAuditConstants.SPAN_ID,
-        Collections.singletonList(manager.activeSpan().spanId()));
+    map.put(ApolloAuditConstants.SPAN_ID, Collections.singletonList(manager.activeSpan().spanId()));
     map.put(ApolloAuditConstants.OPERATOR,
         Collections.singletonList(manager.activeSpan().operator()));
     map.put(ApolloAuditConstants.PARENT_ID,
@@ -75,8 +74,8 @@ public class ApolloAuditTracer {
     builder = builder.description(description);
     builder = activeSpan == null ? builder.asRootSpan(operatorSupplier.getOperator())
         : builder.asChildOf(activeSpan);
-    String followsFromId = scopeManager().getScope() == null ?
-        null : scopeManager().getScope().getLastSpanId();
+    String followsFromId =
+        scopeManager().getScope() == null ? null : scopeManager().getScope().getLastSpanId();
     builder = builder.followsFrom(followsFromId);
 
     return builder.build();
@@ -92,7 +91,8 @@ public class ApolloAuditTracer {
   }
 
   private ApolloAuditSpan getActiveSpanFromHttp() {
-    ServletRequestAttributes servletRequestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    ServletRequestAttributes servletRequestAttributes =
+        (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
     if (servletRequestAttributes == null) {
       return null;
     }
@@ -105,7 +105,8 @@ public class ApolloAuditTracer {
     if (Objects.isNull(traceId)) {
       return null;
     } else {
-      ApolloAuditSpanContext context = new ApolloAuditSpanContext(traceId, spanId, operator, parentId, followsFromId);
+      ApolloAuditSpanContext context =
+          new ApolloAuditSpanContext(traceId, spanId, operator, parentId, followsFromId);
       return spanBuilder(null, null).regenerateByContext(context);
     }
   }
@@ -176,8 +177,8 @@ public class ApolloAuditTracer {
     public ApolloAuditSpan build() {
       ApolloAuditSpan span = new ApolloAuditSpan();
       spanId = ApolloAuditUtil.generateId();
-      ApolloAuditSpanContext context = new ApolloAuditSpanContext(traceId, spanId, operator,
-          parentId, followsFromId);
+      ApolloAuditSpanContext context =
+          new ApolloAuditSpanContext(traceId, spanId, operator, parentId, followsFromId);
       span.setContext(context);
       span.setDescription(description);
       span.setOpName(opName);

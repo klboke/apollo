@@ -64,12 +64,16 @@ var diff_item_module = angular.module('diff_item', ['app.service', 'apollo.direc
 var namespace_module = angular.module('namespace', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar', 'valdr']);
 //server config
 var server_config_manage_module = angular.module('server_config_manage', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar']);
+// Value的全局检索
+var global_search_value_module = angular.module('global_search_value', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar', 'ngSanitize']);
 //setting
 var setting_module = angular.module('setting', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar', 'valdr']);
 //role
 var role_module = angular.module('role', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar']);
 //cluster
 var cluster_module = angular.module('cluster', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar', 'valdr']);
+//manage_cluster
+var manage_cluster_module = angular.module('manage_cluster', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar', 'valdr']);
 //release history
 var release_history_module = angular.module('release_history', ['app.service', 'apollo.directive', 'app.util', 'toastr', 'angular-loading-bar']);
 //open manage

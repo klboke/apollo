@@ -28,31 +28,42 @@ function UserController($scope, $window, $translate, toastr, AppUtil, UserServic
     $scope.changeStatus = changeStatus
     $scope.searchUsers = searchUsers
     $scope.resetSearchUser = resetSearchUser
+    $scope.validatePwdMatch = validatePwdMatch
 
     initPermission();
-
-    getCreatedUsers();
 
     function initPermission() {
         PermissionService.has_root_permission()
         .then(function (result) {
             $scope.isRootUser = result.hasPermission;
+            getCreatedUsers();
         })
     }
 
     function getCreatedUsers() {
-        UserService.find_users("",true)
-        .then(function (result) {
-            if (!result || result.length === 0) {
-                return;
-            }
-            $scope.createdUsers = [];
-            $scope.filterUser = [];
-            result.forEach(function (user) {
-                $scope.createdUsers.push(user);
-                $scope.filterUser.push(user);
+        if ($scope.isRootUser) {
+            UserService.find_users("",true)
+            .then(function (result) {
+                if (!result || result.length === 0) {
+                    return;
+                }
+                $scope.createdUsers = [];
+                $scope.filterUser = [];
+                result.forEach(function (user) {
+                    $scope.createdUsers.push(user);
+                    $scope.filterUser.push(user);
+                });
             });
-        })
+        } else {
+            UserService.load_user()
+            .then(function (result) {
+                if (!result) {
+                    return;
+                }
+                $scope.createdUsers = [result];
+                $scope.filterUser = [result];
+            });
+        }
     }
 
     function changeStatus(status, user){
@@ -85,6 +96,13 @@ function UserController($scope, $window, $translate, toastr, AppUtil, UserServic
         searchUsers()
     }
 
+    function validatePwdMatch() {
+        $scope.pwdNotMatch = false;
+        if ($scope.user.password && $scope.user.password != $scope.user.confirmPassword) {
+            $scope.pwdNotMatch = true;
+        }
+    }
+
     $scope.changeUserEnabled = function (user) {
         var newUser={}
         if (user != null) {
@@ -104,6 +122,10 @@ function UserController($scope, $window, $translate, toastr, AppUtil, UserServic
     }
 
     $scope.createOrUpdateUser = function () {
+        validatePwdMatch();
+        if ($scope.pwdNotMatch) {
+            return;
+        }
         if ($scope.status === '2') {
             UserService.createOrUpdateUser(true, $scope.user).then(function (result) {
                 toastr.success($translate.instant('UserMange.Created'));

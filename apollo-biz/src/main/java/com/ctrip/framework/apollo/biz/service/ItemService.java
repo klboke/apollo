@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.ctrip.framework.apollo.biz.entity.Audit;
 import com.ctrip.framework.apollo.biz.entity.Item;
 import com.ctrip.framework.apollo.biz.entity.Namespace;
 import com.ctrip.framework.apollo.biz.repository.ItemRepository;
+import com.ctrip.framework.apollo.common.dto.ItemInfoDTO;
 import com.ctrip.framework.apollo.common.exception.BadRequestException;
 import com.ctrip.framework.apollo.common.exception.NotFoundException;
 import com.ctrip.framework.apollo.common.utils.BeanUtils;
@@ -33,10 +34,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,10 +48,8 @@ public class ItemService {
   private final AuditService auditService;
   private final BizConfig bizConfig;
 
-  public ItemService(
-      final ItemRepository itemRepository,
-      final @Lazy NamespaceService namespaceService,
-      final AuditService auditService,
+  public ItemService(final ItemRepository itemRepository,
+      final @Lazy NamespaceService namespaceService, final AuditService auditService,
       final BizConfig bizConfig) {
     this.itemRepository = itemRepository;
     this.namespaceService = namespaceService;
@@ -84,12 +80,14 @@ public class ItemService {
   }
 
   public Item findOne(String appId, String clusterName, String namespaceName, String key) {
-    Namespace namespace = findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
+    Namespace namespace =
+        findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
     return itemRepository.findByNamespaceIdAndKey(namespace.getId(), key);
   }
 
   public Item findLastOne(String appId, String clusterName, String namespaceName) {
-    Namespace namespace = findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
+    Namespace namespace =
+        findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
     return findLastOne(namespace.getId());
   }
 
@@ -109,7 +107,8 @@ public class ItemService {
     return items;
   }
 
-  public List<Item> findItemsWithoutOrdered(String appId, String clusterName, String namespaceName) {
+  public List<Item> findItemsWithoutOrdered(String appId, String clusterName,
+      String namespaceName) {
     Namespace namespace = namespaceService.findOne(appId, clusterName, namespaceName);
     if (namespace != null) {
       return findItemsWithoutOrdered(namespace.getId());
@@ -134,16 +133,35 @@ public class ItemService {
   }
 
   public List<Item> findItemsModifiedAfterDate(long namespaceId, Date date) {
-    return itemRepository.findByNamespaceIdAndDataChangeLastModifiedTimeGreaterThan(namespaceId, date);
+    return itemRepository.findByNamespaceIdAndDataChangeLastModifiedTimeGreaterThan(namespaceId,
+        date);
+  }
+
+  public int findNonEmptyItemCount(long namespaceId) {
+    return itemRepository.countByNamespaceIdAndFilterKeyEmpty(namespaceId);
   }
 
   public Page<Item> findItemsByKey(String key, Pageable pageable) {
     return itemRepository.findByKey(key, pageable);
   }
 
-  public Page<Item> findItemsByNamespace(String appId, String clusterName, String namespaceName, Pageable pageable) {
-    Namespace namespace = findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
+  public Page<Item> findItemsByNamespace(String appId, String clusterName, String namespaceName,
+      Pageable pageable) {
+    Namespace namespace =
+        findNamespaceByAppIdAndClusterNameAndNamespaceName(appId, clusterName, namespaceName);
     return itemRepository.findByNamespaceId(namespace.getId(), pageable);
+  }
+
+  public Page<ItemInfoDTO> getItemInfoBySearch(String key, String value, Pageable limit) {
+    Page<ItemInfoDTO> itemInfoDTOs;
+    if (key.isEmpty() && !value.isEmpty()) {
+      itemInfoDTOs = itemRepository.findItemsByValueLike(value, limit);
+    } else if (value.isEmpty() && !key.isEmpty()) {
+      itemInfoDTOs = itemRepository.findItemsByKeyLike(key, limit);
+    } else {
+      itemInfoDTOs = itemRepository.findItemsByKeyAndValueLike(key, value, limit);
+    }
+    return itemInfoDTOs;
   }
 
   @Transactional
@@ -152,7 +170,7 @@ public class ItemService {
     checkItemType(entity.getType());
     checkItemValueLength(entity.getNamespaceId(), entity.getValue());
 
-    entity.setId(0);//protection
+    entity.setId(0);// protection
 
     if (entity.getLineNum() == 0) {
       Item lastItem = findLastOne(entity.getNamespaceId());
@@ -163,7 +181,7 @@ public class ItemService {
     Item item = itemRepository.save(entity);
 
     auditService.audit(Item.class.getSimpleName(), item.getId(), Audit.OP.INSERT,
-                       item.getDataChangeCreatedBy());
+        item.getDataChangeCreatedBy());
 
     return item;
   }
@@ -172,7 +190,7 @@ public class ItemService {
   public Item saveComment(Item entity) {
     entity.setKey("");
     entity.setValue("");
-    entity.setId(0);//protection
+    entity.setId(0);// protection
 
     if (entity.getLineNum() == 0) {
       Item lastItem = findLastOne(entity.getNamespaceId());
@@ -183,7 +201,7 @@ public class ItemService {
     Item item = itemRepository.save(entity);
 
     auditService.audit(Item.class.getSimpleName(), item.getId(), Audit.OP.INSERT,
-                       item.getDataChangeCreatedBy());
+        item.getDataChangeCreatedBy());
 
     return item;
   }
@@ -197,15 +215,15 @@ public class ItemService {
     managedItem = itemRepository.save(managedItem);
 
     auditService.audit(Item.class.getSimpleName(), managedItem.getId(), Audit.OP.UPDATE,
-                       managedItem.getDataChangeLastModifiedBy());
+        managedItem.getDataChangeLastModifiedBy());
 
     return managedItem;
   }
 
   private boolean checkItemValueLength(long namespaceId, String value) {
-    int limit = getItemValueLengthLimit(namespaceId);
     Namespace currentNamespace = namespaceService.findOne(namespaceId);
-    if(currentNamespace != null) {
+    int limit = getItemValueLengthLimit(currentNamespace);
+    if (currentNamespace != null) {
       Matcher m = clusterPattern.matcher(currentNamespace.getClusterName());
       boolean isGray = m.matches();
       if (isGray) {
@@ -218,10 +236,11 @@ public class ItemService {
     return true;
   }
 
-  private int getGrayNamespaceItemValueLengthLimit(Namespace grayNamespace, int grayNamespaceLimit) {
+  private int getGrayNamespaceItemValueLengthLimit(Namespace grayNamespace,
+      int grayNamespaceLimit) {
     Namespace parentNamespace = namespaceService.findParentNamespace(grayNamespace);
     if (parentNamespace != null) {
-      int parentLimit = getItemValueLengthLimit(parentNamespace.getId());
+      int parentLimit = getItemValueLengthLimit(grayNamespace);
       if (parentLimit > grayNamespaceLimit) {
         return parentLimit;
       }
@@ -243,17 +262,24 @@ public class ItemService {
     return true;
   }
 
-  private int getItemValueLengthLimit(long namespaceId) {
+  private int getItemValueLengthLimit(Namespace namespace) {
     Map<Long, Integer> namespaceValueLengthOverride = bizConfig.namespaceValueLengthLimitOverride();
-    if (namespaceValueLengthOverride != null && namespaceValueLengthOverride.containsKey(namespaceId)) {
-      return namespaceValueLengthOverride.get(namespaceId);
+    if (namespaceValueLengthOverride != null
+        && namespaceValueLengthOverride.containsKey(namespace.getId())) {
+      return namespaceValueLengthOverride.get(namespace.getId());
     }
+
+    Map<String, Integer> appIdValueLengthOverride = bizConfig.appIdValueLengthLimitOverride();
+    if (appIdValueLengthOverride != null
+        && appIdValueLengthOverride.containsKey(namespace.getAppId())) {
+      return appIdValueLengthOverride.get(namespace.getAppId());
+    }
+
     return bizConfig.itemValueLengthLimit();
   }
 
   private Namespace findNamespaceByAppIdAndClusterNameAndNamespaceName(String appId,
-                                                                       String clusterName,
-                                                                       String namespaceName) {
+      String clusterName, String namespaceName) {
     Namespace namespace = namespaceService.findOne(appId, clusterName, namespaceName);
     if (namespace == null) {
       throw NotFoundException.namespaceNotFound(appId, clusterName, namespaceName);

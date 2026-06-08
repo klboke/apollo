@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,23 @@
 package com.ctrip.framework.apollo.portal.audit;
 
 import com.ctrip.framework.apollo.audit.spi.ApolloAuditLogQueryApiPreAuthorizer;
-import com.ctrip.framework.apollo.portal.component.PermissionValidator;
+import com.ctrip.framework.apollo.portal.component.UnifiedPermissionValidator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component("apolloAuditLogQueryApiPreAuthorizer")
 @ConditionalOnProperty(prefix = "apollo.audit.log", name = "enabled", havingValue = "true")
-public class ApolloAuditLogQueryApiPortalPreAuthorizer implements
-    ApolloAuditLogQueryApiPreAuthorizer {
-  private final PermissionValidator permissionValidator;
+public class ApolloAuditLogQueryApiPortalPreAuthorizer
+    implements ApolloAuditLogQueryApiPreAuthorizer {
+  private final UnifiedPermissionValidator unifiedPermissionValidator;
 
-  public ApolloAuditLogQueryApiPortalPreAuthorizer(PermissionValidator permissionValidator) {
-    this.permissionValidator = permissionValidator;
+  public ApolloAuditLogQueryApiPortalPreAuthorizer(
+      UnifiedPermissionValidator unifiedPermissionValidator) {
+    this.unifiedPermissionValidator = unifiedPermissionValidator;
   }
 
   @Override
   public boolean hasQueryPermission() {
-    return permissionValidator.isSuperAdmin();
+    return unifiedPermissionValidator.isSuperAdmin();
   }
 }

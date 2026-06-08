@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import com.google.common.base.Joiner;
 
 import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.google.common.base.Splitter;
+import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,10 +40,10 @@ public class ReleaseMessageKeyGenerator {
 
   public static List<String> messageToList(String message) {
     List<String> keys = STRING_SPLITTER.splitToList(message);
-    //message should be appId+cluster+namespace
+    // message should be appId+cluster+namespace
     if (keys.size() != 3) {
       logger.error("message format invalid - {}", message);
-      return null;
+      return Collections.emptyList();
     }
     return keys;
   }

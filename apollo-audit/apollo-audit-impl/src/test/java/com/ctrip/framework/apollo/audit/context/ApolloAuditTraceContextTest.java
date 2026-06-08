@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -39,19 +39,17 @@ import org.springframework.web.context.request.RequestContextHolder;
 @ContextConfiguration(classes = ApolloAuditTraceContext.class)
 public class ApolloAuditTraceContextTest {
 
-  @SpyBean
+  @MockitoSpyBean
   ApolloAuditTraceContext traceContext;
 
-  @MockBean
+  @MockitoBean
   ApolloAuditOperatorSupplier supplier;
 
   @BeforeEach
   public void beforeEach() {
     // will be null of each unit-test begin
     RequestContextHolder.resetRequestAttributes();
-    Mockito.reset(
-        traceContext
-    );
+    Mockito.reset(traceContext);
   }
 
   @Test
@@ -67,21 +65,20 @@ public class ApolloAuditTraceContextTest {
 
     ApolloAuditTracer get = traceContext.tracer();
     assertNotNull(get);
-    Mockito.verify(traceContext, Mockito.times(1))
-        .setTracer(Mockito.any(ApolloAuditTracer.class));
+    Mockito.verify(traceContext, Mockito.times(1)).setTracer(Mockito.any(ApolloAuditTracer.class));
   }
 
   @Test
   public void testGetTracerInRequestThreads() {
-    ApolloAuditTracer mockTracer = new ApolloAuditTracer(Mockito.mock(ApolloAuditScopeManager.class), supplier);
+    ApolloAuditTracer mockTracer =
+        new ApolloAuditTracer(Mockito.mock(ApolloAuditScopeManager.class), supplier);
     RequestAttributes mockRequestAttributes = Mockito.mock(RequestAttributes.class);
     RequestContextHolder.setRequestAttributes(mockRequestAttributes);
-    Mockito.when(mockRequestAttributes.getAttribute(Mockito.eq(ApolloAuditConstants.TRACER), Mockito.eq(RequestAttributes.SCOPE_REQUEST)))
-            .thenReturn(mockTracer);
+    Mockito.when(mockRequestAttributes.getAttribute(Mockito.eq(ApolloAuditConstants.TRACER),
+        Mockito.eq(RequestAttributes.SCOPE_REQUEST))).thenReturn(mockTracer);
     ApolloAuditTracer get = traceContext.tracer();
     assertNotNull(get);
-    Mockito.verify(traceContext, Mockito.times(0))
-        .setTracer(Mockito.any(ApolloAuditTracer.class));
+    Mockito.verify(traceContext, Mockito.times(0)).setTracer(Mockito.any(ApolloAuditTracer.class));
   }
 
   @Test

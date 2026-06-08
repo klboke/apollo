@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,6 @@ public class ApolloAuditHttpInterceptor implements ClientHttpRequestInterceptor 
     if (traceContext.tracer() != null) {
       request = traceContext.tracer().inject(request);
     }
-    ClientHttpResponse response = execution.execute(request, body);
-    return response;
+    return execution.execute(request, body);
   }
 }

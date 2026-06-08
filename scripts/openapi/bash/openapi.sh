@@ -19,8 +19,8 @@
 # description               functions to call openapi through http
 # author                    wxq
 # date                      2021-09-12
-# Chinese reference website https://www.apolloconfig.com/#/zh/usage/apollo-open-api-platform
-# English reference website https://www.apolloconfig.com/#/en/usage/apollo-open-api-platform
+# Chinese reference website https://www.apolloconfig.com/#/zh/portal/apollo-open-api-platform
+# English reference website https://www.apolloconfig.com/#/en/portal/apollo-open-api-platform
 
 ####################################### Global variables #######################################
 # portal's address, just support 1 address without suffix '/'
@@ -284,7 +284,7 @@ BODY
 }
 
 #######################################
-# Update an item of a namespace, if item doesn's exist, create it.
+# Update an item of a namespace, if item doesn't exist, create it.
 # 修改配置，当配置不存在时自动创建
 # Arguments:
 #   env

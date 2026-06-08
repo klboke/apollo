@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Apollo Authors
+ * Copyright 2025 Apollo Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  * limitations under the License.
  *
  */
-
 package com.ctrip.framework.apollo.portal.spi.configuration;
 
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultMQService;
@@ -24,13 +23,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MQConfiguration {
 
-  @Configuration
-  public static class DefaultMQConfiguration {
-
-    @Bean
-    public DefaultMQService mqService() {
-      return new DefaultMQService();
-    }
+  @Bean
+  public DefaultMQService mqService() {
+    return new DefaultMQService();
   }
-
 }

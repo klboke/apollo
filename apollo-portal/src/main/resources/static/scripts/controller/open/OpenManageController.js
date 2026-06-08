@@ -22,7 +22,7 @@ function OpenManageController($scope, $translate, toastr, AppUtil, OrganizationS
 
     var $orgWidget = $('#organization');
 
-    $scope.consumer = {};
+    $scope.consumer = defaultConsumer();
     $scope.consumerRole = {
         type: 'NamespaceRole'
     };
@@ -41,6 +41,11 @@ function OpenManageController($scope, $translate, toastr, AppUtil, OrganizationS
     $scope.preDeleteConsumer = preDeleteConsumer;
     $scope.deleteConsumer = deleteConsumer;
     $scope.preGrantPermission = preGrantPermission;
+    $scope.toggleRateLimitEnabledInput = function() {
+        if (!$scope.consumer.rateLimitEnabled) {
+            $scope.consumer.rateLimit = 0;
+        }
+    };
 
     function init() {
         initOrganization();
@@ -163,6 +168,17 @@ function OpenManageController($scope, $translate, toastr, AppUtil, OrganizationS
             $scope.submitBtnDisabled = false;
             return;
         }
+
+        if ($scope.consumer.rateLimitEnabled) {
+            if (!$scope.consumer.rateLimit || $scope.consumer.rateLimit < 1) {
+                toastr.warning($translate.instant('Open.Manage.Consumer.RateLimitValue.Error'));
+                $scope.submitBtnDisabled = false;
+                return;
+            }
+        } else {
+            $scope.consumer.rateLimit = 0;
+        }
+
         var selectedOrg = $orgWidget.select2('data')[0];
 
         if (!selectedOrg.id) {
@@ -189,7 +205,7 @@ function OpenManageController($scope, $translate, toastr, AppUtil, OrganizationS
                 $scope.consumerToken = consumerToken;
                 $scope.consumerRole.token = consumerToken.token;
                 $scope.submitBtnDisabled = false;
-                $scope.consumer = {};
+                $scope.consumer = defaultConsumer();
             }, function (response) {
                 AppUtil.showErrorMsg(response, $translate.instant('Common.CreateFailed'));
                 $scope.submitBtnDisabled = false;
@@ -214,6 +230,15 @@ function OpenManageController($scope, $translate, toastr, AppUtil, OrganizationS
             }, function (response) {
                 AppUtil.showErrorMsg(response, $translate.instant('Open.Manage.GrantFailed'));
             })
+    }
+
+    function defaultConsumer() {
+        return {
+            allowCreateApplication: false,
+            allowManageUsers: false,
+            rateLimitEnabled: false,
+            rateLimit: 0
+        };
     }
 
     init();
